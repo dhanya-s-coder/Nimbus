@@ -1,0 +1,265 @@
+/* src/components/dashboard/dashboard.css */
+
+/* --- LAYOUT --- */
+.app-layout {
+  min-height: 100vh;
+  background-color: var(--bg-primary);
+  font-family: 'Inter', sans-serif;
+  color: var(--text-primary);
+  position: relative;
+  /* Context for fixed sidebar */
+}
+
+.layout-content-wrapper {
+  margin-left: 260px;
+  /* Offset for fixed sidebar */
+  width: calc(100% - 260px);
+  /* Fill remaining width */
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.main-content {
+  flex: 1;
+  padding: 32px;
+  padding-top: 112px;
+  /* 32px padding + 80px header height */
+  width: 100%;
+  max-width: 1600px;
+  margin: 0 auto;
+}
+
+/* Also for tools using .main class */
+.main {
+  padding-top: 112px !important;
+  /* Force override for tool pages */
+}
+
+.topbar h2 {
+  font-size: 22px;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.topbar-right {
+  display: flex;
+  align-items: center;
+}
+
+.role-badge {
+  padding: 6px 12px;
+  border-radius: 16px;
+  font-size: 13px;
+  background: var(--bg-secondary);
+  color: var(--primary-color);
+}
+
+.logout-icon-btn {
+  background: none;
+  border: none;
+  font-size: 18px;
+  cursor: pointer;
+  margin-left: 12px;
+}
+
+/* --- DASHBOARD CONTENT --- */
+.dashboard-content-area {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  /* Padding removed here as it's handled by .main-content */
+}
+
+/* Welcome Section */
+.welcome-section {
+  background: linear-gradient(135deg, var(--primary-light) 0%, var(--bg-card) 100%);
+  padding: 32px;
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+}
+
+.welcome-title {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+
+.welcome-subtitle {
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+/* Section Title */
+.section-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 16px;
+}
+
+/* Quick Actions Section */
+.quick-actions-section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.quick-actions-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+}
+
+.quick-action-card {
+  background-color: var(--bg-card);
+  border: 2px solid var(--border-color);
+  border-radius: 12px;
+  padding: 24px 16px;
+  text-align: center;
+  text-decoration: none;
+  color: var(--text-primary);
+  transition: all 0.3s ease;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.quick-action-card:hover {
+  border-color: var(--primary-color);
+  box-shadow: var(--shadow-sm);
+  transform: translateY(-4px);
+}
+
+.action-icon {
+  font-size: 40px;
+}
+
+.action-name {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+/* Recent Activity Section */
+.recent-activity-section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.activity-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.view-all-link {
+  color: var(--primary-color);
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.view-all-link:hover {
+  text-decoration: underline;
+}
+
+.activity-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.activity-item {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  transition: all 0.3s ease;
+}
+
+.activity-item:hover {
+  box-shadow: var(--shadow-sm);
+  border-color: var(--primary-color);
+}
+
+.activity-icon {
+  font-size: 32px;
+}
+
+.activity-details {
+  flex: 1;
+}
+
+/* Action Buttons */
+.activity-action {
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s ease;
+  min-width: 80px;
+}
+
+.activity-action.view {
+  background-color: #EEF2FF;
+  color: #4F46E5;
+}
+
+.activity-action.view:hover {
+  background-color: #E0E7FF;
+}
+
+.activity-action.edit {
+  background-color: #FEF3C7;
+  color: #D97706;
+}
+
+.activity-action.edit:hover {
+  background-color: #FDE68A;
+}
+
+.activity-action.preview {
+  background-color: #ECFDF5;
+  color: #059669;
+}
+
+.activity-action.preview:hover {
+  background-color: #D1FAE5;
+}
+
+/* Preview Box (Moved from activity.css for reuse) */
+.preview-box {
+  width: 50px;
+  height: 50px;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  flex-shrink: 0;
+  font-family: 'Inter', sans-serif;
+}
+
+.preview-box-icon {
+  font-size: 20px;
+  line-height: 1;
+}
+
+.preview-box-text {
+  font-size: 9px;
+  color: #6B7280;
+  text-transform: capitalize;
+  font-weight: 500;
+  line-height: 1;
+}

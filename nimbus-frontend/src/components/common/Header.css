@@ -1,0 +1,74 @@
+/* Header.css */
+.common-header {
+    position: fixed;
+    top: 0;
+    left: 260px;
+    /* Offset for fixed sidebar */
+    right: 0;
+    height: 80px;
+    /* Fixed height */
+    background-color: #ffffff;
+    border-bottom: 1px solid #e5e7eb;
+    padding: 0 32px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    z-index: 900;
+    /* Above content but below modals/tooltips if any */
+}
+
+.header-title {
+    font-size: 22px;
+    color: #0F1724;
+    margin: 0;
+    font-weight: 700;
+}
+
+.header-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+/* Reusing common styles, but defining here for isolation if needed */
+.role-badge {
+    padding: 6px 12px;
+    border-radius: 16px;
+    font-size: 13px;
+    background: #EEF2FF;
+    color: #1E3A8A;
+    border: 1px solid #DCE4FF;
+}
+
+.avatar-link {
+    width: 40px;
+    height: 40px;
+    background: #E6EEF9;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    font-weight: bold;
+    font-size: 14px;
+    color: #1E3A8A;
+    transition: opacity 0.2s;
+}
+
+.avatar-link:hover {
+    opacity: 0.8;
+}
+
+.logout-icon-btn {
+    background: none;
+    border: none;
+    font-size: 20px;
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 50%;
+    transition: background-color 0.2s;
+}
+
+.logout-icon-btn:hover {
+    background-color: #fee2e2;
+}
