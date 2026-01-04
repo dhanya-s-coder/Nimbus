@@ -1,22 +1,21 @@
 import "./App.css";
-import { useLocation } from "react-router-dom";
 import { Routes, Route } from 'react-router-dom';
 import Home from "./components/home/Home";
-import Login from "./components/auth/login/Login";
-import Signup from "./components/auth/signup/Signup";
-import ForgotPassword from "./components/auth/forgot-password/ForgotPassword";
-import VerifyOTP from "./components/auth/verify-otp/VerifyOTP";
+import Login from "./components/auth/Login";
+import Signup from "./components/auth/Signup";
+import ForgotPassword from "./components/auth/ForgotPassword";
+import VerifyOTP from "./components/auth/VerifyOTP";
 import Dashboard from "./components/dashboard/Dashboard";
-// import Profile from './components/tools/profile/profile';
 import Profile from "./components/profile/Profile";
 import ProtectedRoute from "./components/zprotect/ProtectedRoute";
 import PublicRoute from "./components/zprotect/PublicRoute";
-import EmailDraft from "./components/tools/email-gen/EmailDraft";
-import LogoIdeas from "./components/tools/logo-gen/LogoIdeas";
-import Settings from "./components/tools/settings/Settings";
-import Activity from "./components/tools/history/Activity";
+import EmailGenerator from "./components/tools/EmailGenerator";
+import LogoIdeas from "./components/tools/LogoGenerator";
+import PosterGenerator from "./components/tools/PosterGenerator";
+import ReportGenerator from "./components/tools/ReportGenerator";
+import Activity from "./components/tools/history/activity";
 import { HistoryProvider } from "./context/HistoryContext";
-import ProtectedLayout from './components/common/ProtectedLayout'
+import ProtectedLayout from './components/zprotect/ProtectedLayout'
 
 function App() {
   return (
@@ -39,9 +38,10 @@ function App() {
         }>
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/profile" element={<Profile />} />
-          <Route path="/email-draft" element={<EmailDraft />} />
-          <Route path="/logo-ideas" element={<LogoIdeas />} />
-          <Route path="/settings" element={<Settings />} />
+          <Route path="/email-generator" element={<EmailGenerator />} />
+          <Route path="/poster-generator" element={<PosterGenerator />} />
+          <Route path="/logo-generator" element={<LogoIdeas />} />
+          <Route path="/report-generator" element={<ReportGenerator />} />
           <Route path="/activity" element={<Activity />} />
         </Route>
       </Routes>
@@ -50,3 +50,4 @@ function App() {
 }
 
 export default App;
+

@@ -10,7 +10,7 @@ export const AuthProvider = ({ children }) => {
   });
   const [isAuthenticated, setIsAuthenticated] = useState(() => {
     const token = localStorage.getItem('accessToken');
-    return !!token && token !== 'undefined' && token !== 'null';
+    return !!token;
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -19,7 +19,6 @@ export const AuthProvider = ({ children }) => {
     return savedUser ? JSON.parse(savedUser).role : null;
   });
 
-  // Signup with OTP (Step 1: Send OTP email)
   const signup = async (name, email, password, confirmPassword, role) => {
     setLoading(true);
     setError(null);
@@ -35,8 +34,6 @@ export const AuthProvider = ({ children }) => {
       if (!response.ok) {
         throw new Error(data.error || 'Signup failed');
       }
-
-      // Don't auto-login - wait for OTP verification
       setLoading(false);
       return { success: true, data };
     } catch (err) {
@@ -227,29 +224,6 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // Update User Profile (Local + API if needed)
-  const updateUserProfile = async (userData) => {
-    setLoading(true);
-    try {
-      // 1. Update local state immediately for UI responsiveness
-      const updatedUser = { ...user, ...userData };
-      setUser(updatedUser);
-      setRole(updatedUser.role);
-      localStorage.setItem('user', JSON.stringify(updatedUser));
-
-      // 2. TODO: Call API endpoint when available
-      // await fetch(API_ENDPOINTS.AUTH.UPDATE_PROFILE, ...);
-
-      setLoading(false);
-      return { success: true, user: updatedUser };
-    } catch (err) {
-      console.error('Update profile error:', err);
-      setError(err.message);
-      setLoading(false);
-      return { success: false, error: err.message };
-    }
-  };
-
   // Forgot Password - Step 1: Send OTP
   const sendForgotPasswordOtp = async (email) => {
     setLoading(true);
@@ -368,7 +342,6 @@ export const AuthProvider = ({ children }) => {
       logout,
       refreshAccessToken,
       getCurrentUser,
-      updateUserProfile,
       sendForgotPasswordOtp,
       verifyForgotPasswordOtp,
       resetPassword,

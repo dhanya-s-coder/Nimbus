@@ -1,32 +1,54 @@
-import { Activity } from "../models/Activity.js";
 import { User } from "../models/User.js";
 
-//  * Get complete activity history for a specific user
-//  * Combines emails (from User document) and posters, logos (from Activity collection)
 export const getActivityByUser = async (userId) => {
     try {
-        // Fetch User for embedded email activities
-        const user = await User.findById(userId);
-        let embeddedEmails = [];
+        const user = await User.findById(userId)
+            .select('activities')
+            .lean();
 
-        if (user && user.activities) {
-            const drafts = user.activities.emailDrafts || [];
-            const sent = user.activities.sentEmails || [];
+        if (!user || !user.activities) return [];
 
-            embeddedEmails = [
-                ...drafts.map(d => ({ ...d.toObject(), type: 'email', status: 'draft' })),
-                ...sent.map(s => ({ ...s.toObject(), type: 'email', status: 'sent' }))
-            ];
-        }
+        const { emailDrafts = [], sentEmails = [], posterDrafts = [], logoDrafts = [], reports = [] } = user.activities;
 
-        // Fetch other activities from collection
-        const otherActivities = await Activity.find({
-            user_id: userId,
-            type: { $ne: 'email' }
-        }).sort({ createdAt: -1 }).exec();
+        const allActivities = [
+            ...emailDrafts.map(d => ({
+                ...d,
+                _id: d._id.toString(),
+                type: 'email',
+                status: 'draft',
+                title: d.subject || 'Untitled Draft'
+            })),
+            ...sentEmails.map(s => ({
+                ...s,
+                _id: s._id.toString(),
+                type: 'email',
+                status: 'sent',
+                title: s.subject || 'Untitled Email'
+            })),
+            ...posterDrafts.map(p => ({
+                ...p,
+                _id: p._id.toString(),
+                type: 'poster',
+                status: p.status || 'draft',
+                title: p.formData?.eventTitle || p.formData?.eventName || p.formData?.announcementTitle || p.formData?.recruitmentTitle || 'Untitled Poster'
+            })),
+            ...logoDrafts.map(l => ({
+                ...l,
+                _id: l._id.toString(),
+                type: 'logo',
+                status: l.status || 'draft',
+                title: l.logoName || 'Untitled Logo'
+            })),
+            ...reports.map(r => ({
+                ...r,
+                _id: r._id.toString(),
+                type: 'report',
+                status: r.status || 'final',
+                title: r.title || 'Untitled Report'
+            }))
+        ];
 
-        // Combine all and sort by date
-        const allActivities = [...embeddedEmails, ...otherActivities].sort((a, b) =>
+        allActivities.sort((a, b) =>
             new Date(b.createdAt) - new Date(a.createdAt)
         );
 
@@ -37,191 +59,165 @@ export const getActivityByUser = async (userId) => {
     }
 };
 
-/**
- * Save an email draft directly into the User document
- */
 export const saveEmailDraft = async (userId, draftData) => {
     try {
-        const user = await User.findById(userId);
-        if (!user) throw new Error("User not found");
+        const updatedUser = await User.findOneAndUpdate(
+            { _id: userId },
+            { $push: { 'activities.emailDrafts': draftData } },
+            { new: true, select: { 'activities.emailDrafts': { $slice: -1 } } }
+        ).lean();
 
-        if (!user.activities) user.activities = { emailDrafts: [], sentEmails: [] };
-
-        user.activities.emailDrafts.push(draftData);
-        await user.save();
-
-        // Return the last added item (the draft) with its new ID
-        return user.activities.emailDrafts[user.activities.emailDrafts.length - 1];
+        if (!updatedUser) throw new Error("User not found");
+        return updatedUser.activities.emailDrafts[0];
     } catch (error) {
         console.error("Error saving email draft to user:", error);
         throw error;
     }
 };
 
-/**
- * Save a sent email directly into the User document
- */
+export const savePosterDraft = async (userId, draftData) => {
+    try {
+        const updatedUser = await User.findOneAndUpdate(
+            { _id: userId },
+            { $push: { 'activities.posterDrafts': draftData } },
+            { new: true, select: { 'activities.posterDrafts': { $slice: -1 } } }
+        ).lean();
+
+        if (!updatedUser) throw new Error("User not found");
+        return updatedUser.activities.posterDrafts[0];
+    } catch (error) {
+        console.error("Error saving poster draft to user:", error);
+        throw error;
+    }
+};
+
+export const saveLogoDraft = async (userId, draftData) => {
+    try {
+        const updatedUser = await User.findOneAndUpdate(
+            { _id: userId },
+            { $push: { 'activities.logoDrafts': draftData } },
+            { new: true, select: { 'activities.logoDrafts': { $slice: -1 } } }
+        ).lean();
+
+        if (!updatedUser) throw new Error("User not found");
+        return updatedUser.activities.logoDrafts[0];
+    } catch (error) {
+        console.error("Error saving logo draft to user:", error);
+        throw error;
+    }
+};
+
+export const saveReport = async (userId, reportData) => {
+    try {
+        const updatedUser = await User.findOneAndUpdate(
+            { _id: userId },
+            { $push: { 'activities.reports': reportData } },
+            { new: true, select: { 'activities.reports': { $slice: -1 } } }
+        ).lean();
+
+        if (!updatedUser) throw new Error("User not found");
+        return updatedUser.activities.reports[0];
+    } catch (error) {
+        console.error("Error saving report to user:", error);
+        throw error;
+    }
+};
+
 export const saveSentEmail = async (userId, emailData) => {
     try {
-        const user = await User.findById(userId);
-        if (!user) throw new Error("User not found");
+        const updatedUser = await User.findOneAndUpdate(
+            { _id: userId },
+            { $push: { 'activities.sentEmails': emailData } },
+            { new: true, select: { 'activities.sentEmails': { $slice: -1 } } }
+        ).lean();
 
-        if (!user.activities) user.activities = { emailDrafts: [], sentEmails: [] };
-
-        user.activities.sentEmails.push(emailData);
-        await user.save();
-
-        // Return the last added item
-        return user.activities.sentEmails[user.activities.sentEmails.length - 1];
+        if (!updatedUser) throw new Error("User not found");
+        return updatedUser.activities.sentEmails[0];
     } catch (error) {
         console.error("Error saving sent email to user:", error);
         throw error;
     }
 };
 
-//Get activities for a specific user filtered by type
 export const getActivityByUserAndType = async (userId, type) => {
     try {
+        const fieldMap = {
+            'email': 'activities.emailDrafts activities.sentEmails',
+            'poster': 'activities.posterDrafts',
+            'logo': 'activities.logoDrafts',
+            'report': 'activities.reports'
+        };
+
+        const user = await User.findById(userId)
+            .select(fieldMap[type] || 'activities')
+            .lean();
+
+        if (!user || !user.activities) return [];
+
+        let activities = [];
+
         if (type === 'email') {
-            const user = await User.findById(userId);
-            let emails = [];
-            if (user && user.activities) {
-                emails = [
-                    ...(user.activities.emailDrafts || []).map(d => ({
-                        ...d.toObject(),
-                        type: 'email',
-                        status: 'draft',
-                        title: d.subject || 'Untitled Draft'
-                    })),
-                    ...(user.activities.sentEmails || []).map(s => ({
-                        ...s.toObject(),
-                        type: 'email',
-                        status: 'sent',
-                        title: s.subject || 'Untitled Email'
-                    }))
-                ];
-            }
-            return emails.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+            const drafts = (user.activities.emailDrafts || []).map(d => ({
+                ...d,
+                type: 'email',
+                status: 'draft',
+                title: d.subject || 'Untitled Draft'
+            }));
+            const sent = (user.activities.sentEmails || []).map(s => ({
+                ...s,
+                type: 'email',
+                status: 'sent',
+                title: s.subject || 'Untitled Email'
+            }));
+            activities = [...drafts, ...sent];
+        } else if (type === 'poster') {
+            activities = (user.activities.posterDrafts || []).map(p => ({
+                ...p,
+                type: 'poster',
+                status: p.status || 'draft',
+                title: p.formData?.eventTitle || p.formData?.eventName || p.formData?.announcementTitle || p.formData?.recruitmentTitle || 'Untitled Poster'
+            }));
+        } else if (type === 'logo') {
+            activities = (user.activities.logoDrafts || []).map(l => ({
+                ...l,
+                type: 'logo',
+                status: l.status || 'draft',
+                title: l.logoName || 'Untitled Logo'
+            }));
+        } else if (type === 'report') {
+            activities = (user.activities.reports || []).map(r => ({
+                ...r,
+                type: 'report',
+                status: r.status || 'final',
+                title: r.title || 'Untitled Report'
+            }));
         }
 
-        const activities = await Activity.find({
-            user_id: userId,
-            type: type
-        })
-            .sort({ createdAt: -1 })
-            .exec();
-        return activities;
+        return activities.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
     } catch (error) {
         console.error("Error fetching activities by type:", error);
         throw error;
     }
 };
 
-/**
- * Get all drafts for a user
- */
-export const getUserDrafts = async (userId) => {
-    try {
-        const user = await User.findById(userId);
-        const drafts = user?.activities?.emailDrafts?.map(d => ({ ...d.toObject(), type: 'email', status: 'draft' })) || [];
-
-        const otherDrafts = await Activity.find({
-            user_id: userId,
-            status: 'draft',
-            type: { $ne: 'email' }
-        }).sort({ createdAt: -1 }).exec();
-
-        return [...drafts, ...otherDrafts].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-    } catch (error) {
-        console.error("Error fetching user drafts:", error);
-        throw error;
-    }
-};
-
-/**
- * Get all sent items for a user
- */
-export const getUserSentItems = async (userId) => {
-    try {
-        const user = await User.findById(userId);
-        const sent = user?.activities?.sentEmails?.map(s => ({
-            ...s.toObject(),
-            type: 'email',
-            status: 'sent',
-            title: s.subject || 'Untitled Email'
-        })) || [];
-
-        const otherSent = await Activity.find({
-            user_id: userId,
-            status: 'sent',
-            type: { $ne: 'email' }
-        }).sort({ createdAt: -1 }).exec();
-
-        return [...sent, ...otherSent].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-    } catch (error) {
-        console.error("Error fetching sent items:", error);
-        throw error;
-    }
-};
-
-/**
- * Save a new activity (email draft, sent email, poster, logo, etc.)
- */
-export const saveActivity = async (activityData) => {
-    try {
-        const activity = new Activity(activityData);
-        await activity.save();
-        return activity;
-    } catch (error) {
-        console.error("Error saving activity:", error);
-        throw error;
-    }
-};
-
-/**
- * Update an activity (e.g., change draft to sent)
- */
-export const updateActivity = async (activityId, updateData) => {
-    try {
-        const activity = await Activity.findByIdAndUpdate(
-            activityId,
-            updateData,
-            { new: true }
-        );
-        return activity;
-    } catch (error) {
-        console.error("Error updating activity:", error);
-        throw error;
-    }
-};
-
-/**
- * Delete an activity (handling both embedded and collection)
- */
 export const deleteActivity = async (userId, activityId) => {
     try {
-        // Try deleting from User embedded activities first
-        const user = await User.findById(userId);
-        if (user && user.activities) {
-            const initialDraftsCount = user.activities.emailDrafts.length;
-            user.activities.emailDrafts = user.activities.emailDrafts.filter(d => d._id.toString() !== activityId);
-
-            const initialSentCount = user.activities.sentEmails.length;
-            user.activities.sentEmails = user.activities.sentEmails.filter(s => s._id.toString() !== activityId);
-
-            if (user.activities.emailDrafts.length < initialDraftsCount || user.activities.sentEmails.length < initialSentCount) {
-                await user.save();
-                return { success: true, message: "Embedded activity deleted" };
+        const result = await User.updateOne(
+            { _id: userId },
+            {
+                $pull: {
+                    "activities.emailDrafts": { _id: activityId },
+                    "activities.sentEmails": { _id: activityId },
+                    "activities.posterDrafts": { _id: activityId },
+                    "activities.logoDrafts": { _id: activityId },
+                    "activities.reports": { _id: activityId },
+                },
             }
-        }
+        );
 
-        // If not found in embedded, try Activity collection
-        const result = await Activity.findOneAndDelete({ _id: activityId, user_id: userId });
-        return result;
+        return result.modifiedCount > 0 ? { success: true, message: "Activity deleted successfully" } : null;
     } catch (error) {
         console.error("Error deleting activity:", error);
         throw error;
     }
 };
-
-

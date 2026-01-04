@@ -1,6 +1,6 @@
 import { User } from "../models/User.js";
 import { OtpToken } from "../models/OtpToken.js";
-import { generateTokens, verifyRefreshToken } from "../utils/jwt.js";
+import { generateTokens, verifyRefreshToken, decodeToken } from "../utils/jwt.js";
 import { sendEmail } from "../services/email.service.js";
 import {
     generateOtp,
@@ -8,619 +8,231 @@ import {
     isValidOtpFormat,
     generateOtpEmailTemplate,
     generateOtpPlainText,
-    generatePasswordChangedEmailTemplate,
-    generatePasswordChangedPlainText
+    generatePasswordChangedEmailTemplate
 } from "../utils/otp.js";
 
-// =========================
-// OTP-BASED SIGNUP FLOW
-// =========================
+const sendOtpHelper = async (email, name, type = 'Signup', userData = null) => {
+    const otp = generateOtp();
+    const expiresAt = getOtpExpirationTime();
+    const emailLower = email.toLowerCase();
 
-// Step 1: Send OTP during Signup
+    await OtpToken.deleteOne({ email: emailLower, type });
+    const otpToken = new OtpToken({ email: emailLower, otp, expiresAt, type, userData });
+    await otpToken.save();
+
+    const subject = type === 'forgotPassword' ? "Reset Your Password - Nimbus OTP" : "Verify Your Email - Nimbus OTP";
+    await sendEmail({
+        to: emailLower,
+        subject,
+        html: generateOtpEmailTemplate(otp, name, type === 'forgotPassword' ? 'Password Reset' : 'Signup'),
+        text: generateOtpPlainText(otp, name)
+    });
+    return { email: emailLower, expiresIn: 180 };
+};
+
+const verifyOtpHelper = async (email, otp, type) => {
+    if (!email || !otp) throw new Error("Email and OTP are required");
+    if (!isValidOtpFormat(otp)) throw new Error("OTP must be 6 digits");
+
+    const otpToken = await OtpToken.findOne({ email: email.toLowerCase(), type });
+    if (!otpToken) throw new Error("OTP not found or expired");
+
+    const isValid = otpToken.verifyOtp(otp);
+    if (!isValid) {
+        await otpToken.save();
+        throw new Error(`Invalid OTP. ${5 - otpToken.attempts} attempts remaining`);
+    }
+    return otpToken;
+};
+
 export const signupController = async (req, res) => {
     try {
         const { name, email, password, confirmPassword, role } = req.body;
+        if (!name || !email || !password || !confirmPassword) return res.status(400).json({ error: "All fields are required" });
+        if (password !== confirmPassword) return res.status(400).json({ error: "Passwords do not match" });
+        if (password.length < 6) return res.status(400).json({ error: "Password must be at least 6 characters" });
 
-        // Validation
-        if (!name || !email || !password || !confirmPassword) {
-            return res.status(400).json({ error: "All fields are required" });
-        }
+        if (await User.findOne({ email: email.toLowerCase() })) return res.status(409).json({ error: "Email already registered" });
 
-        if (password !== confirmPassword) {
-            return res.status(400).json({ error: "Passwords do not match" });
-        }
-
-        if (password.length < 6) {
-            return res.status(400).json({ error: "Password must be at least 6 characters" });
-        }
-
-        const emailLower = email.toLowerCase();
-
-        // Check if user already exists
-        const existingUser = await User.findOne({ email: emailLower });
-        if (existingUser) {
-            return res.status(409).json({ error: "Email already registered" });
-        }
-
-        // Generate OTP
-        const otp = generateOtp();
-        const expiresAt = getOtpExpirationTime();
-
-        // Delete any existing OTP for this email (rate limiting)
-        await OtpToken.deleteOne({ email: emailLower });
-
-        // Create OTP document
-        const otpToken = new OtpToken({
-            email: emailLower,
-            otp,
-            expiresAt,
-            userData: {
-                name,
-                password,
-                confirmPassword,
-                role: role || "User"
-            }
-        });
-
-        await otpToken.save();
-
-        // Send OTP email
-        const htmlContent = generateOtpEmailTemplate(otp, name);
-        const plainTextContent = generateOtpPlainText(otp, name);
-
-        await sendEmail({
-            to: emailLower,
-            subject: "Verify Your Email - Nimbus OTP",
-            html: htmlContent,
-            text: plainTextContent
-        });
-
-        res.status(200).json({
-            message: "OTP sent successfully to your email",
-            email: emailLower,
-            expiresIn: 180, // 3 minutes
-            resendAfter: 60 // Resend button enabled after 1 minute
-        });
+        const result = await sendOtpHelper(email, name, 'Signup', { name, password, role: role || "Society Member" });
+        res.status(200).json({ message: "OTP sent successfully", ...result });
     } catch (error) {
-        console.error("Signup OTP Error:", error.message);
-        res.status(500).json({ error: error.message || "Failed to send OTP" });
+        res.status(500).json({ error: error.message });
     }
 };
 
-// Step 2: Verify OTP and Create User (Auto-login)
 export const verifyOtpController = async (req, res) => {
     try {
         const { email, otp } = req.body;
-
-        // Validation
-        if (!email || !otp) {
-            return res.status(400).json({ error: "Email and OTP are required" });
-        }
-
-        if (!isValidOtpFormat(otp)) {
-            return res.status(400).json({ error: "OTP must be 6 digits" });
-        }
-
-        const emailLower = email.toLowerCase();
-
-        // Find OTP document
-        const otpToken = await OtpToken.findOne({ email: emailLower });
-
-        if (!otpToken) {
-            return res.status(400).json({ error: "OTP not found or expired. Please request a new one." });
-        }
-
-        // Verify OTP
-        try {
-            const isValid = otpToken.verifyOtp(otp);
-            if (!isValid) {
-                await otpToken.save();
-                const remaining = otpToken.getRemainingTime();
-                return res.status(400).json({
-                    error: "Invalid OTP. Please try again.",
-                    attemptsRemaining: 5 - otpToken.attempts,
-                    expiresIn: remaining
-                });
-            }
-        } catch (error) {
-            return res.status(400).json({ error: error.message });
-        }
-
-        // OTP verified - Create user
+        const otpToken = await verifyOtpHelper(email, otp, 'Signup');
         const { name, password, role } = otpToken.userData;
 
-        const newUser = new User({
-            name,
-            email: emailLower,
-            password,
-            role: role || "User"
-        });
+        const newUser = new User({ name, email: email.toLowerCase(), password, role: role || "Society Member" });
+        const { accessToken, refreshToken } = generateTokens(newUser._id.toString(), newUser.email, newUser.role);
 
-        await newUser.save();
-
-        // Generate tokens for auto-login
-        const { accessToken, refreshToken } = generateTokens(
-            newUser._id.toString(),
-            newUser.email,
-            newUser.role
-        );
-
-        // Save refresh token
+        // Cleanup & add token
+        newUser.refreshTokens = newUser.refreshTokens.filter(t => { try { verifyRefreshToken(t); return true; } catch { return false; } });
         newUser.addRefreshToken(refreshToken);
-        await newUser.save();
+        if (newUser.refreshTokens.length > 5) newUser.refreshTokens.shift();
 
-        // Delete OTP after successful verification
+        await newUser.save();
         await OtpToken.deleteOne({ _id: otpToken._id });
 
-        res.status(201).json({
-            message: "Email verified and account created successfully",
-            user: {
-                id: newUser._id,
-                name: newUser.name,
-                email: newUser.email,
-                role: newUser.role
-            },
-            accessToken,
-            refreshToken
-        });
+        res.status(201).json({ message: "User created successfully", user: { id: newUser._id, name, email: newUser.email, role: newUser.role }, accessToken, refreshToken });
     } catch (error) {
-        console.error("Verify OTP Error:", error.message);
-        res.status(500).json({ error: error.message || "OTP verification failed" });
+        res.status(400).json({ error: error.message });
     }
 };
 
-// Step 3: Resend OTP
 export const resendOtpController = async (req, res) => {
     try {
         const { email } = req.body;
+        const otpToken = await OtpToken.findOne({ email: email.toLowerCase(), type: 'Signup' });
+        if (!otpToken) return res.status(400).json({ error: "Signup session not found" });
 
-        if (!email) {
-            return res.status(400).json({ error: "Email is required" });
-        }
-
-        const emailLower = email.toLowerCase();
-
-        // Find existing OTP
-        const otpToken = await OtpToken.findOne({ email: emailLower });
-
-        if (!otpToken) {
-            return res.status(400).json({ error: "No signup request found for this email. Please signup again." });
-        }
-
-        // Check if already verified
-        if (otpToken.isVerified) {
-            return res.status(400).json({ error: "This email is already verified" });
-        }
-
-        // Generate new OTP
-        const newOtp = generateOtp();
-        const newExpiresAt = getOtpExpirationTime();
-
-        otpToken.otp = newOtp;
-        otpToken.expiresAt = newExpiresAt;
-        otpToken.attempts = 0;
-        await otpToken.save();
-
-        // Send new OTP email
-        const { name } = otpToken.userData;
-        const htmlContent = generateOtpEmailTemplate(newOtp, name);
-        const plainTextContent = generateOtpPlainText(newOtp, name);
-
-        await sendEmail({
-            to: emailLower,
-            subject: "Your New OTP - Nimbus Email Verification",
-            html: htmlContent,
-            text: plainTextContent
-        });
-
-        res.status(200).json({
-            message: "New OTP sent to your email",
-            email: emailLower,
-            expiresIn: 180, // 3 minutes
-            resendAfter: 60 // Resend button enabled after 1 minute
-        });
+        const result = await sendOtpHelper(email, otpToken.userData.name, 'Signup', otpToken.userData);
+        res.status(200).json({ message: "New OTP sent", ...result });
     } catch (error) {
-        console.error("Resend OTP Error:", error.message);
-        res.status(500).json({ error: error.message || "Failed to resend OTP" });
+        res.status(500).json({ error: error.message });
     }
 };
 
-// =========================
-// OTP-BASED FORGOT PASSWORD FLOW
-// =========================
-
-// Step 1: Send OTP for forgot password
 export const sendForgotPasswordOtpController = async (req, res) => {
     try {
-        const { email } = req.body;
+        const user = await User.findOne({ email: req.body.email?.toLowerCase() });
+        if (!user) return res.status(404).json({ error: "Account not found" });
 
-        // Validation
-        if (!email) {
-            return res.status(400).json({ error: "Email is required" });
-        }
-
-        const emailLower = email.toLowerCase();
-
-        // Check if user exists
-        const user = await User.findOne({ email: emailLower });
-        if (!user) {
-            return res.status(404).json({ error: "No account found with this email" });
-        }
-
-        // Generate OTP
-        const otp = generateOtp();
-        const expiresAt = getOtpExpirationTime();
-
-        // Delete any existing OTP for this email
-        await OtpToken.deleteOne({ email: emailLower, type: 'forgotPassword' });
-
-        // Create OTP document for forgot password
-        const otpToken = new OtpToken({
-            email: emailLower,
-            otp,
-            type: 'forgotPassword',
-            expiresAt
-        });
-
-        await otpToken.save();
-
-        // Send OTP email
-        const htmlContent = generateOtpEmailTemplate(otp, user.name, 'Password Reset');
-        const plainTextContent = generateOtpPlainText(otp, user.name);
-
-        await sendEmail({
-            to: emailLower,
-            subject: "Reset Your Password - Nimbus OTP",
-            html: htmlContent,
-            text: plainTextContent
-        });
-
-        res.status(200).json({
-            message: "OTP sent successfully to your email",
-            email: emailLower,
-            expiresIn: 180,
-            resendAfter: 60
-        });
+        const result = await sendOtpHelper(user.email, user.name, 'forgotPassword');
+        res.status(200).json({ message: "Reset OTP sent", ...result });
     } catch (error) {
-        console.error("Send Forgot Password OTP Error:", error.message);
-        res.status(500).json({ error: error.message || "Failed to send OTP" });
+        res.status(500).json({ error: error.message });
     }
 };
 
-// Step 2: Verify OTP for forgot password
 export const verifyForgotPasswordOtpController = async (req, res) => {
     try {
-        const { email, otp } = req.body;
-
-        // Validation
-        if (!email || !otp) {
-            return res.status(400).json({ error: "Email and OTP are required" });
-        }
-
-        if (!isValidOtpFormat(otp)) {
-            return res.status(400).json({ error: "OTP must be 6 digits" });
-        }
-
-        const emailLower = email.toLowerCase();
-
-        // Find OTP document
-        const otpToken = await OtpToken.findOne({ email: emailLower, type: 'forgotPassword' });
-
-        if (!otpToken) {
-            return res.status(400).json({ error: "OTP not found or expired. Please request a new one." });
-        }
-
-        // Verify OTP
-        try {
-            const isValid = otpToken.verifyOtp(otp);
-            if (!isValid) {
-                await otpToken.save();
-                const remaining = otpToken.getRemainingTime();
-                return res.status(400).json({
-                    error: "Invalid OTP. Please try again.",
-                    attemptsRemaining: 5 - otpToken.attempts,
-                    expiresIn: remaining
-                });
-            }
-
-            // Save the verified state AND extend expiration to allow time for password reset
-            otpToken.isVerified = true;
-            otpToken.expiresAt = new Date(Date.now() + 5 * 60 * 1000); // Add 5 minutes
-            await otpToken.save();
-        } catch (error) {
-            return res.status(400).json({ error: error.message });
-        }
-
-        res.status(200).json({
-            message: "OTP verified successfully",
-            email: emailLower,
-            otpTokenId: otpToken._id.toString()
-        });
+        const otpToken = await verifyOtpHelper(req.body.email, req.body.otp, 'forgotPassword');
+        otpToken.isVerified = true;
+        otpToken.expiresAt = new Date(Date.now() + 5 * 60 * 1000);
+        await otpToken.save();
+        res.status(200).json({ message: "OTP verified", email: req.body.email, otpTokenId: otpToken._id });
     } catch (error) {
-        console.error("Verify Forgot Password OTP Error:", error.message);
-        res.status(500).json({ error: error.message || "OTP verification failed" });
+        res.status(400).json({ error: error.message });
     }
 };
 
-// Step 3: Reset Password
 export const resetPasswordController = async (req, res) => {
     try {
         const { email, otp, newPassword, confirmPassword } = req.body;
+        if (newPassword !== confirmPassword) return res.status(400).json({ error: "Passwords do not match" });
 
-        // Validation
-        if (!email || !otp || !newPassword || !confirmPassword) {
-            return res.status(400).json({ error: "All fields are required" });
-        }
+        const otpToken = await OtpToken.findOne({ email: email.toLowerCase(), otp, type: 'forgotPassword', isVerified: true });
+        if (!otpToken || otpToken.isExpired()) return res.status(400).json({ error: "Invalid or expired reset session" });
 
-        if (newPassword !== confirmPassword) {
-            return res.status(400).json({ error: "Passwords do not match" });
-        }
-
-        if (newPassword.length < 6) {
-            return res.status(400).json({ error: "Password must be at least 6 characters" });
-        }
-
-        const emailLower = email.toLowerCase();
-
-        // Find OTP document
-        const otpToken = await OtpToken.findOne({ email: emailLower, type: 'forgotPassword' });
-
-        if (!otpToken) {
-            return res.status(400).json({ error: "Invalid request. Please request a new password reset." });
-        }
-
-        // Security check: Ensure the OTP matches
-        if (otpToken.otp !== otp) {
-            return res.status(400).json({ error: "Invalid OTP provided." });
-        }
-
-        if (!otpToken.isVerified) {
-            return res.status(400).json({ error: "OTP not verified. Please verify OTP first." });
-        }
-
-        if (otpToken.isExpired()) {
-            return res.status(400).json({ error: "OTP expired. Please request a new password reset." });
-        }
-
-        // Find user
-        const user = await User.findOne({ email: emailLower });
-        if (!user) {
-            return res.status(404).json({ error: "User not found" });
-        }
-
-        // Update password
+        const user = await User.findOne({ email: email.toLowerCase() });
         user.password = newPassword;
+        user.refreshTokens = [];
         await user.save();
-
-        // Delete OTP after successful password reset
         await OtpToken.deleteOne({ _id: otpToken._id });
 
-        // Send confirmation email with security link
         const resetLink = "http://localhost:3000/forgot-password";
-        const htmlContent = generatePasswordChangedEmailTemplate(user.name, resetLink);
-        const plainTextContent = `Your password has been changed successfully. If this wasn't you, please reset your password: ${resetLink}`;
+        await sendEmail({ to: email, subject: "Password Changed - Nimbus", html: generatePasswordChangedEmailTemplate(user.name, resetLink), text: `Password changed. If not you, reset: ${resetLink}` });
 
-        await sendEmail({
-            to: emailLower,
-            subject: "Password Changed Successfully - Nimbus",
-            html: htmlContent,
-            text: plainTextContent
-        });
-
-        res.status(200).json({
-            message: "Password reset successfully. Confirmation email sent.",
-            email: emailLower
-        });
+        res.status(200).json({ message: "Password reset successful" });
     } catch (error) {
-        console.error("Reset Password Error:", error.message);
-        res.status(500).json({ error: error.message || "Password reset failed" });
+        res.status(500).json({ error: error.message });
     }
 };
 
-// Resend OTP for Forgot Password
 export const resendForgotPasswordOtpController = async (req, res) => {
     try {
-        const { email } = req.body;
-
-        if (!email) {
-            return res.status(400).json({ error: "Email is required" });
-        }
-
-        const emailLower = email.toLowerCase();
-
-        // Find existing OTP
-        const otpToken = await OtpToken.findOne({ email: emailLower, type: 'forgotPassword' });
-
-        if (!otpToken) {
-            return res.status(400).json({ error: "No password reset request found for this email." });
-        }
-
-        // Generate new OTP
-        const newOtp = generateOtp();
-        const newExpiresAt = getOtpExpirationTime();
-
-        otpToken.otp = newOtp;
-        otpToken.expiresAt = newExpiresAt;
-        otpToken.attempts = 0;
-        otpToken.isVerified = false;
-        await otpToken.save();
-
-        // Find user for email
-        const user = await User.findOne({ email: emailLower });
-
-        // Send new OTP email
-        const htmlContent = generateOtpEmailTemplate(newOtp, user?.name || 'User', 'Password Reset');
-        const plainTextContent = generateOtpPlainText(newOtp, user?.name || 'User');
-
-        await sendEmail({
-            to: emailLower,
-            subject: "Your New OTP - Nimbus Password Reset",
-            html: htmlContent,
-            text: plainTextContent
-        });
-
-        res.status(200).json({
-            message: "New OTP sent to your email",
-            email: emailLower,
-            expiresIn: 180,
-            resendAfter: 60
-        });
+        const user = await User.findOne({ email: req.body.email?.toLowerCase() });
+        if (!user) return res.status(404).json({ error: "Account not found" });
+        const result = await sendOtpHelper(user.email, user.name, 'forgotPassword');
+        res.status(200).json({ message: "Reset OTP resent", ...result });
     } catch (error) {
-        console.error("Resend Forgot Password OTP Error:", error.message);
-        res.status(500).json({ error: error.message || "Failed to resend OTP" });
+        res.status(500).json({ error: error.message });
     }
 };
 
-// =========================
-// TRADITIONAL LOGIN
-// =========================
-
-// Login Controller
 export const loginController = async (req, res) => {
     try {
         const { email, password } = req.body;
+        const user = await User.findOne({ email: email?.toLowerCase() });
+        if (!user || !(await user.comparePassword(password))) return res.status(401).json({ error: "Invalid credentials" });
 
-        // Validation
-        if (!email || !password) {
-            return res.status(400).json({ error: "Email and password are required" });
-        }
+        const { accessToken, refreshToken } = generateTokens(user._id.toString(), user.email, user.role);
 
-        // Find user by email
-        const user = await User.findOne({ email: email.toLowerCase() });
-        if (!user) {
-            return res.status(401).json({ error: "Invalid email or password" });
-        }
+        // Cleanup expired tokens & add new one
+        user.refreshTokens = user.refreshTokens.filter(t => {
+            try { verifyRefreshToken(t); return true; }
+            catch { return false; }
+        });
 
-        // Verify password
-        const isPasswordValid = await user.comparePassword(password);
-        if (!isPasswordValid) {
-            return res.status(401).json({ error: "Invalid email or password" });
-        }
-
-        // Generate tokens
-        const { accessToken, refreshToken } = generateTokens(
-            user._id.toString(),
-            user.email,
-            user.role
-        );
-
-        // Save refresh token to database
         user.addRefreshToken(refreshToken);
+        if (user.refreshTokens.length > 5) user.refreshTokens.shift(); // Cap at 5 active sessions
+
         await user.save();
 
-        res.status(200).json({
-            message: "Login successful",
-            user: {
-                id: user._id,
-                name: user.name,
-                email: user.email,
-                role: user.role
-            },
-            accessToken,
-            refreshToken
-        });
+        res.status(200).json({ message: "Login successful", user: { id: user._id, name: user.name, email: user.email, role: user.role }, accessToken, refreshToken });
     } catch (error) {
-        console.error("Login Error:", error.message);
-        res.status(500).json({ error: error.message || "Login failed" });
+        res.status(500).json({ error: error.message });
     }
 };
 
-// =========================
-// TOKEN MANAGEMENT
-// =========================
-
-// Refresh Token Controller
 export const refreshTokenController = async (req, res) => {
     try {
         const { refreshToken } = req.body;
-
-        if (!refreshToken) {
-            return res.status(400).json({ error: "Refresh token is required" });
-        }
-
-        // Verify refresh token
         const decoded = verifyRefreshToken(refreshToken);
-
-        // Find user
         const user = await User.findById(decoded.userId);
-        if (!user || !user.refreshTokens.includes(refreshToken)) {
-            return res.status(401).json({ error: "Invalid or expired refresh token" });
-        }
+        if (!user || !user.refreshTokens.includes(refreshToken)) return res.status(401).json({ error: "Invalid refresh token" });
 
-        // Generate new tokens
-        const { accessToken, refreshToken: newRefreshToken } = generateTokens(
-            user._id.toString(),
-            user.email,
-            user.role
-        );
+        const { accessToken, refreshToken: newRefreshToken } = generateTokens(user._id.toString(), user.email, user.role);
 
-        // Replace old refresh token with new one
         user.removeRefreshToken(refreshToken);
+
+        // Cleanup other expired tokens
+        user.refreshTokens = user.refreshTokens.filter(t => {
+            try { verifyRefreshToken(t); return true; }
+            catch { return false; }
+        });
+
         user.addRefreshToken(newRefreshToken);
+        if (user.refreshTokens.length > 5) user.refreshTokens.shift();
+
         await user.save();
 
-        res.status(200).json({
-            message: "Token refreshed successfully",
-            accessToken,
-            refreshToken: newRefreshToken
-        });
+        res.status(200).json({ accessToken, refreshToken: newRefreshToken });
     } catch (error) {
-        console.error("Refresh Token Error:", error.message);
-        res.status(401).json({ error: error.message || "Failed to refresh token" });
+        res.status(401).json({ error: "Session expired" });
     }
 };
 
-// Logout Controller
 export const logoutController = async (req, res) => {
     try {
         const { refreshToken } = req.body;
+        if (!refreshToken) return res.status(400).json({ error: "Token required" });
 
-        if (!refreshToken) {
-            return res.status(400).json({ error: "Refresh token is required" });
+        let userId;
+        try {
+            userId = verifyRefreshToken(refreshToken).userId;
+        } catch {
+            userId = decodeToken(refreshToken)?.userId;
         }
 
-        // Verify refresh token
-        const decoded = verifyRefreshToken(refreshToken);
-
-        // Find user and remove refresh token
-        const user = await User.findById(decoded.userId);
-        if (user) {
-            user.removeRefreshToken(refreshToken);
-            await user.save();
-        }
-
-        res.status(200).json({ message: "Logged out successfully" });
+        if (userId) await User.updateOne({ _id: userId }, { $pull: { refreshTokens: refreshToken } });
+        res.status(200).json({ message: "Logged out" });
     } catch (error) {
-        console.error("Logout Error:", error.message);
-        res.status(400).json({ error: error.message || "Logout failed" });
+        res.status(400).json({ error: "Logout failed" });
     }
 };
 
-// =========================
-// USER PROFILE
-// =========================
-
-// Get current user (protected route)
 export const getCurrentUserController = async (req, res) => {
     try {
-        const userId = req.user?.userId || req.user?.id;
-        const user = await User.findById(userId).select("-password -refreshTokens");
-
-        if (!user) {
-            return res.status(404).json({ error: "User not found" });
-        }
-
-        res.status(200).json({
-            user: {
-                id: user._id,
-                name: user.name,
-                email: user.email,
-                role: user.role,
-                createdAt: user.createdAt
-            }
-        });
+        const user = await User.findById(req.user?.userId).select("-password -refreshTokens");
+        if (!user) return res.status(404).json({ error: "User not found" });
+        res.status(200).json({ user: { id: user._id, name: user.name, email: user.email, role: user.role } });
     } catch (error) {
-        console.error("Get User Error:", error.message);
-        res.status(500).json({ error: error.message || "Failed to get user" });
+      res.status(500).json({ error: "Error fetching user" });
     }
 };

@@ -1,13 +1,7 @@
 import axios from "axios";
 
-// =========================
-// API BASE URL
-// =========================
 export const API_BASE_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
 
-// =========================
-// API ENDPOINTS
-// =========================
 export const API_ENDPOINTS = {
   EMAIL: {
     GENERATE: `${API_BASE_URL}/api/email/generate`,
@@ -33,15 +27,25 @@ export const API_ENDPOINTS = {
   },
   LOGO: {
     GENERATE: `${API_BASE_URL}/api/logo/generate`,
+    SAVE: `${API_BASE_URL}/api/logo/save`,
+    HISTORY: `${API_BASE_URL}/api/logo/history`,
+    ACTIVITY: `${API_BASE_URL}/api/logo/activity`,
   },
   POSTER: {
     GENERATE: `${API_BASE_URL}/api/poster/generate`,
+    SAVE: `${API_BASE_URL}/api/poster/save`,
+    HISTORY: `${API_BASE_URL}/api/poster/history`,
+    ACTIVITY: `${API_BASE_URL}/api/poster/activity`,
+  },
+  REPORT: {
+    GENERATE: `${API_BASE_URL}/api/report/generate`,
+    SAVE: `${API_BASE_URL}/api/report/save`,
+    HISTORY: `${API_BASE_URL}/api/report/history`,
+    ACTIVITY: `${API_BASE_URL}/api/report/activity`,
   },
 };
 
-// =========================
 // AXIOS INSTANCE (DEFAULT EXPORT)
-// =========================
 const axiosInstance = axios.create({
   baseURL: API_BASE_URL,
   withCredentials: true,
@@ -49,9 +53,7 @@ const axiosInstance = axios.create({
 
 export default axiosInstance;
 
-// =========================
-// fetchWithAuth (unchanged)
-// =========================
+
 export const fetchWithAuth = async (url, options = {}) => {
   const accessToken = localStorage.getItem('accessToken');
 

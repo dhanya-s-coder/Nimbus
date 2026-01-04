@@ -1,0 +1,35 @@
+.auth-left-panel {
+    flex: 0 0 65%;
+    background-color: var(--color-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 80px;
+    overflow: hidden;
+}
+
+.auth-brand-content {
+    width: 100%;
+    max-width: 600px;
+    z-index: 2;
+}
+
+.auth-logo-svg {
+    height: 100px;
+    width: auto;
+}
+
+.auth-brand-headline {
+    font-size: 48px;
+    font-weight: 700;
+    color: var(--color-secondary);
+    line-height: 1.1;
+    margin-bottom: 16px;
+}
+
+.auth-brand-subtitle {
+    font-size: 18px;
+    color: rgba(255, 255, 255, 0.7);
+    max-width: 500px;
+    margin-bottom: 60px;
+}

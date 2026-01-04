@@ -1,0 +1,369 @@
+.tool-page {
+    background-color: var(--color-secondary);
+    height: 100vh;
+    padding-top: 72px;
+    box-sizing: border-box;
+    overflow: hidden;
+}
+
+.tool-container {
+    display: flex;
+    height: calc(100vh - 72px);
+    width: 100%;
+}
+
+.tool-panel {
+    height: 100%;
+    overflow-y: auto;
+    padding: var(--spacing-xl);
+    box-sizing: border-box;
+    background: var(--color-secondary);
+}
+
+.tool-panel-left {
+    flex: 1;
+    min-width: 450px;
+    max-width: 500px;
+    border-right: 1px solid var(--color-divider);
+}
+
+.tool-panel-right {
+    flex: 1.2;
+}
+
+.panel-inner {
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+/* 2. Tool Header Patterns */
+.tool-header {
+    margin-bottom: var(--spacing-xl);
+}
+
+.tool-header.space-between {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.tool-title {
+    font-size: 20px;
+    font-weight: var(--font-weight-bold);
+    color: var(--color-primary);
+    margin: 0;
+    letter-spacing: -0.02em;
+}
+
+.tool-subtitle {
+    font-size: 15px;
+    color: var(--color-text-muted);
+    margin-top: 4px;
+}
+
+/* 3. Form Styling - Unified Patterns */
+.tool-form-group {
+    margin-bottom: var(--spacing-lg);
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+}
+
+.tool-form-group label {
+    font-size: 12px;
+    font-weight: var(--font-weight-bold);
+    color: var(--color-primary);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+}
+
+.tool-form-group input,
+.tool-form-group textarea,
+.tool-form-group select {
+    padding: 14px var(--spacing-md);
+    border-radius: var(--radius-default);
+    border: 1px solid var(--color-divider);
+    font-size: 15px;
+    background: var(--color-secondary);
+    color: var(--color-text);
+    transition: all 0.2s;
+    width: 100%;
+    box-sizing: border-box;
+    font-family: inherit;
+}
+
+.tool-form-group input:focus,
+.tool-form-group textarea:focus,
+.tool-form-group select:focus {
+    outline: none;
+    border-color: var(--color-accent);
+}
+
+.tool-form-group textarea {
+    resize: vertical;
+    min-height: 120px;
+}
+
+.tool-form-section {
+    margin-bottom: var(--spacing-xl);
+}
+
+.tool-form-section h3 {
+    font-size: 12px;
+    font-weight: var(--font-weight-bold);
+    color: var(--color-primary);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: var(--spacing-md);
+}
+
+/* 4. Feature Specific Form Elements (Simplified) */
+.tool-options-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--spacing-sm);
+}
+
+.tool-option-card {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    padding: 12px var(--spacing-md);
+    background-color: var(--color-secondary);
+    border: 1px solid var(--color-divider);
+    border-radius: var(--radius-default);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.tool-option-card.active {
+    background-color: var(--color-primary);
+    border-color: var(--color-accent);
+}
+
+.tool-option-card.active {
+    color: var(--color-secondary) !important;
+}
+
+.tool-option-card.active * {
+    color: inherit !important;
+}
+
+.tool-option-card:hover:not(.active) {
+    border-color: var(--color-accent);
+}
+
+/* 5. Tool Action Buttons */
+.tool-actions {
+    margin-top: var(--spacing-xl);
+}
+
+.tool-btn-generate {
+    width: 100%;
+    background: var(--color-accent);
+    color: var(--color-secondary);
+    padding: 16px;
+    border-radius: var(--radius-default);
+    font-size: 16px;
+    font-weight: var(--font-weight-bold);
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.tool-btn-generate:hover:not(:disabled) {
+    background: var(--color-accent-hover);
+}
+
+.tool-btn-generate:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* 6. Preview & Editor Components */
+.tool-preview-container {
+    background: white;
+    border: 1px solid var(--color-divider);
+    border-radius: 16px;
+    min-height: 500px;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    margin-bottom: var(--spacing-xl);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.02);
+    overflow: hidden;
+}
+
+.tool-preview-editor {
+    flex: 1;
+    padding: 30px;
+    font-size: 16px;
+    line-height: 1.6;
+    color: var(--color-text);
+    outline: none;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    text-align: left;
+}
+
+.tool-preview-image {
+    width: 100%;
+    max-height: calc(100vh - 280px);
+    object-fit: contain;
+    border-radius: 12px;
+    box-shadow: 0 30px 60px rgba(0, 0, 0, 0.12);
+    background-color: white;
+    padding: 20px;
+}
+
+.tool-preview-placeholder {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    color: var(--color-text-muted);
+    text-align: center;
+    width: 80%;
+}
+
+.tool-preview-loading {
+    padding: 40px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--spacing-md);
+}
+
+/* 7. Action Matrix (Bottom Grid) */
+.tool-preview-actions {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--spacing-sm);
+    width: 100%;
+}
+
+.tool-btn-secondary {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing-sm);
+    padding: 12px;
+    border-radius: var(--radius-default);
+    background: var(--color-secondary);
+    border: 1px solid var(--color-divider);
+    color: var(--color-text);
+    font-size: 13px;
+    font-weight: var(--font-weight-semibold);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.tool-btn-secondary:hover {
+    border-color: var(--color-accent);
+    color: var(--color-accent);
+}
+
+.tool-btn-final {
+    grid-column: span 2;
+    background: var(--color-primary);
+    color: var(--color-secondary);
+    padding: 16px;
+    border-radius: var(--radius-default);
+    font-size: 16px;
+    font-weight: var(--font-weight-bold);
+    border: none;
+    cursor: pointer;
+    margin-top: var(--spacing-sm);
+    transition: all 0.2s;
+}
+
+.tool-btn-final:hover {
+    background: #1e293b;
+}
+
+/* 8. Common Components */
+.premium-badge {
+    background: rgba(21, 128, 61, 0.1);
+    color: var(--color-success);
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 10px;
+    font-weight: var(--font-weight-bold);
+    text-transform: uppercase;
+}
+
+.tool-footer-history {
+    margin-top: 60px;
+    padding-top: 40px;
+    border-top: 1px solid var(--color-divider);
+}
+
+.tool-status-msg {
+    margin-top: var(--spacing-md);
+    padding: 14px;
+    border-radius: var(--radius-default);
+    font-size: 14px;
+    text-align: center;
+}
+
+.tool-status-success {
+    background: rgba(21, 128, 61, 0.1);
+    color: var(--color-success);
+    border: 1px solid rgba(21, 128, 61, 0.2);
+}
+
+.tool-status-error {
+    background: rgba(251, 146, 60, 0.1);
+    border: 1px solid rgba(251, 146, 60, 0.2);
+    color: var(--color-accent-hover);
+}
+
+.spinner {
+    width: 48px;
+    height: 48px;
+    border: 3px solid var(--color-divider);
+    border-top-color: var(--color-accent);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.loading-dots span {
+    animation: blink 1.4s infinite both;
+}
+
+.loading-dots span:nth-child(2) {
+    animation-delay: .2s;
+}
+
+.loading-dots span:nth-child(3) {
+    animation-delay: .4s;
+}
+
+@keyframes blink {
+    0% {
+        opacity: .2;
+    }
+
+    20% {
+        opacity: 1;
+    }
+
+    100% {
+        opacity: .2;
+    }
+}

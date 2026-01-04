@@ -1,115 +1,99 @@
 import React from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useHistory } from '../../context/HistoryContext';
-import { useNavigate } from 'react-router-dom';
-import Header from '../common/Header';
-import Sidebar from '../common/Sidebar';
-// import './dashboard/dashboard.css';
+import RecentActivity from '../common/RecentActivity';
 import './profile.css';
 
 const Profile = () => {
-    const { user, role, logout } = useAuth();
-    const { historyItems } = useHistory();
-    const navigate = useNavigate();
+    const { user, role } = useAuth();
+    const { historyItems, loading } = useHistory();
 
-    // Helper for Initials
     const getInitials = () => {
-        if (user?.name) {
-            const parts = user.name.split(' ');
-            if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
-            return parts[0].substring(0, 2).toUpperCase();
-        }
-        if (user?.email) {
-            return user.email.substring(0, 2).toUpperCase();
-        }
-        return "G";
+        if (!user || !user.name) return "U";
+        const parts = user.name.split(' ');
+        if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+        return parts[0].substring(0, 2).toUpperCase();
     };
 
-    const handleLogout = () => {
-        logout();
-        navigate("/login");
+    const formatDate = (dateString) => {
+        if (!dateString) return "December 2025";
+        const date = new Date(dateString);
+        return date.toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+        });
     };
 
-    // Calculate Stats
     const emailCount = historyItems.filter(item => item.type === 'email').length;
     const posterCount = historyItems.filter(item => item.type === 'poster').length;
     const logoCount = historyItems.filter(item => item.type === 'logo').length;
-
-    // Recent Activity (Top 3)
-    const recentActivity = historyItems.slice(0, 3);
+    const reportCount = historyItems.filter(item => item.type === 'report').length;
 
     return (
-
-
         <div className="dashboard-page">
-            <main className="main" style={{ display: 'flex', flexDirection: 'column' }}>            
-              <Header title="Profile" />
-                {/* CONTENT AREA */}
-                <div style={{ paddingBottom: '40px', width: '100%' }}>
+            <main className="main-content">
+                <div className="profile-content-area">
 
-                    <p style={{ fontSize: '14px', color: '#475569', marginBottom: '24px' }}>
-                        View your personal info, system stats & recent activity.
-                    </p>
-
-                    {/* PROFILE CARD */}
-                    <section className="profile-card-container">
-                        <div className="profile-avatar-large">
-                            {getInitials()}
-                        </div>
-
-                        <h2 className="profile-name">
-                            {user?.name || `Prof. ${user?.email?.split('@')[0]}`}
-                        </h2>
-                        <p className="profile-text">Email: {user?.email}</p>
-                        <p className="profile-text">Department of Computer Science</p>
-                        <p className="profile-text" style={{ marginBottom: '24px' }}>Joined: {user?.signupDate || "Dec 2, 2025"}</p>
-
-                        <button className="edit-profile-btn" onClick={() => navigate('/settings')}>
-                            Edit Profile
-                        </button>
-
-                        {/* Contact Info Inline */}
-                        <div className="contact-info-row">
-                            <div className="contact-item">📧 nimbus00agam@gmail.com</div>
-                        </div>
-                    </section>
-                
-                    {/* STATS SECTION */}
-                    <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#0F1724', marginBottom: '16px' }}>Your Stats</h3>
-                    <section className="section-box stats-grid">
-                        {/* Email Stat */}
-                        <div className="stat-card stat-email">
-                            <div className="stat-number">{emailCount}</div>
-                            <div className="stat-label">Emails Generated</div>
-                        </div>
-
-                        {/* Poster Stat */}
-                        <div className="stat-card stat-poster">
-                            <div className="stat-number">{posterCount}</div>
-                            <div className="stat-label">Posters Created</div>
-                        </div>
-
-                        {/* Logo Stat */}
-                        <div className="stat-card stat-logo">
-                            <div className="stat-number">{logoCount}</div>
-                            <div className="stat-label">Logos Generated</div>
-                        </div>
-                    </section>
-
-                    {/* RECENT ACTIVITY SECTION */}
-                    <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#0F1724', marginBottom: '16px' }}>Recent Activity</h3>
-                    <section className="section-box recent-activity-container">
-                        {recentActivity.length > 0 ? recentActivity.map((item) => (
-                            <div key={item.id} className="recent-activity-item">
-                                <p style={{ fontSize: '14px', fontWeight: '500', color: '#111827', marginBottom: '4px' }}>
-                                    {item.title}
-                                </p>
-                                <p style={{ fontSize: '12px', color: '#6B7280' }}>
-                                    {item.date}
-                                </p>
+                    {/* HERO SECTION */}
+                    <section className="profile-hero">
+                        <div className="profile-avatar-wrapper">
+                            <div className="profile-avatar-large">
+                                {getInitials()}
                             </div>
-                        )) : <p style={{ color: '#6B7280' }}>No recent activity.</p>}
+                        </div>
+
+                        <div className="profile-info-main">
+                            <div className="profile-badge">{role || 'Pro Member'}</div>
+                            <h1 className="profile-name-title">
+                                {user?.name || `Explorer`}
+                            </h1>
+                            <p className="profile-email-sub">
+                                📧 {user?.email}
+                            </p>
+
+                            <div className="profile-details-grid">
+                                <div className="detail-item">
+                                    <span className="detail-label">Member Since</span>
+                                    <span className="detail-value">{formatDate(user?.signupDate || user?.createdAt)}</span>
+                                </div>
+                            </div>
+                        </div>
                     </section>
+
+                    {/* STATS BENTO GRID */}
+                    <div className="section-header">
+                        <h2 className="section-title">Generation Insights</h2>
+                    </div>
+
+                    <section className="stats-summary">
+                        <div className="stat-summary-item highlight">
+                            <span className="stat-label">Total</span>
+                            <span className="stat-value">{loading ? '...' : (emailCount + posterCount + logoCount + reportCount)}</span>
+                        </div>
+                        <div className="stat-divider"></div>
+                        <div className="stat-summary-item">
+                            <span className="stat-label">Emails</span>
+                            <span className="stat-value small">{loading ? '...' : emailCount}</span>
+                        </div>
+                        <div className="stat-summary-item">
+                            <span className="stat-label">Posters</span>
+                            <span className="stat-value small">{loading ? '...' : posterCount}</span>
+                        </div>
+                        <div className="stat-summary-item">
+                            <span className="stat-label">Logos</span>
+                            <span className="stat-value small">{loading ? '...' : logoCount}</span>
+                        </div>
+                        <div className="stat-summary-item">
+                            <span className="stat-label">Reports</span>
+                            <span className="stat-value small">{loading ? '...' : reportCount}</span>
+                        </div>
+                    </section>
+
+                    {/* RECENT ACTIVITY */}
+                    <div className="profile-activity-section">
+                        <RecentActivity limit={5} showViewAll={true} title="Activity Portfolio" />
+                    </div>
                 </div>
             </main>
         </div>

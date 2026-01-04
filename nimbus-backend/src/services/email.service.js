@@ -7,7 +7,7 @@ export const sendEmail = async ({ to, subject, text, html }) => {
             to,
             subject,
             text,
-            html, // Support for HTML emails
+            html,
         });
         return info;
     } catch (error) {

@@ -30,7 +30,7 @@ const OtpTokenSchema = new mongoose.Schema({
     attempts: {
         type: Number,
         default: 0,
-        max: 5 // Max 5 attempts before OTP invalidation
+        max: 5
     },
     userData: {
         name: String,

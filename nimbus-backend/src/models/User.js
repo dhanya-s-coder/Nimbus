@@ -5,7 +5,7 @@ const UserSchema = new mongoose.Schema({
     name: { type: String, required: true },
     email: { type: String, required: true, unique: true, lowercase: true, trim: true },
     password: { type: String, required: true },
-    role: { type: String, default: "Student/Society Member" },
+    role: { type: String, default: "Society Member" },
     refreshTokens: [{ type: String }],
     activities: {
         emailDrafts: [{
@@ -20,6 +20,28 @@ const UserSchema = new mongoose.Schema({
             prompt: { type: String, required: true },
             content: { type: String, required: true },
             recipient: { type: String, required: true },
+            createdAt: { type: Date, default: Date.now }
+        }],
+        posterDrafts: [{
+            templateType: { type: String },
+            formData: { type: mongoose.Schema.Types.Mixed },
+            generatedImageUrl: { type: String },
+            status: { type: String, enum: ['draft', 'final'], default: 'draft' },
+            createdAt: { type: Date, default: Date.now }
+        }],
+        logoDrafts: [{
+            logoName: { type: String },
+            formData: { type: mongoose.Schema.Types.Mixed },
+            generatedImageUrl: { type: String },
+            status: { type: String, enum: ['draft', 'final'], default: 'draft' },
+            createdAt: { type: Date, default: Date.now }
+        }],
+        reports: [{
+            reportType: { type: String, required: true },
+            title: { type: String, required: true },
+            rawInput: { type: String },
+            content: { type: String, required: true },
+            status: { type: String, enum: ['draft', 'final'], default: 'final' },
             createdAt: { type: Date, default: Date.now }
         }]
     }
@@ -37,17 +59,14 @@ UserSchema.pre("save", async function (next) {
     }
 });
 
-// Method to compare passwords
 UserSchema.methods.comparePassword = async function (plainPassword) {
     return await bcrypt.compare(plainPassword, this.password);
 };
 
-// Method to remove a refresh token (logout)
 UserSchema.methods.removeRefreshToken = function (token) {
     this.refreshTokens = this.refreshTokens.filter(t => t !== token);
 };
 
-// Method to add a refresh token
 UserSchema.methods.addRefreshToken = function (token) {
     this.refreshTokens.push(token);
 };
