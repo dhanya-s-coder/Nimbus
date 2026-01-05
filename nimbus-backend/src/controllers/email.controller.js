@@ -37,8 +37,6 @@ write the mail in english only. don't write large mail ,try to limit it in 2-3 p
 also don't write the subject in the mail body.
 
 sample email generation example:-
-    Subject: NOTICE: Commencement of New Semester (January 2026)
-
     Date: December 11, 2025 To: All Students, IIT (ISM) Dhanbad From: Office of the Dean (Academic Affairs)
 
     Dear Students,
