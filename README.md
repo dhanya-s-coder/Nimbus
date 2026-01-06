@@ -6,30 +6,12 @@
 - [Nimbus: Internal Agentic AI Tool](#nimbus-internal-agentic-ai-tool)
   - [Table of Contents](#table-of-contents)
   - [Problem Statement](#problem-statement)
-  - [Live Demo](#live-demo)
   - [Features](#features)
-    - [Email Generation Agent](#email-generation-agent)
-    - [Poster Generation Agent](#poster-generation-agent)
-    - [Logo Generation Agent](#logo-generation-agent)
-    - [Report Generation Agent](#report-generation-agent)
   - [User Guide](#user-guide)
-    - [1. Getting Started](#1-getting-started)
-    - [2. Dashboard Overview](#2-dashboard-overview)
-    - [3. Using the Agents](#3-using-the-agents)
-      - [Email Generator Agent](#email-generator-agent)
-      - [Poster Generation Agent](#poster-generation-agent-1)
-      - [Logo Generation Agent](#logo-generation-agent-1)
-      - [Report Generation Agent](#report-generation-agent-1)
-    - [4. History and Activity Management](#4-history-and-activity-management)
   - [Tech Stack](#tech-stack)
-    - [Frontend](#frontend)
-    - [Backend](#backend)
-    - [AI \& Services](#ai--services)
   - [Setup \& Installation](#setup--installation)
-    - [Prerequisites](#prerequisites)
-    - [Backend Installation](#backend-installation)
-    - [Frontend Installation](#frontend-installation)
   - [Credits \& Attributions](#credits--attributions)
+  - [API Documentation References](#api-documentation-references)
 
 ---
 
@@ -40,13 +22,7 @@ In an academic environment, administrative work often consumes a significant por
 3.  **Creating brand concepts** for new societies or initiatives.
 4.  **Preparing Report from raw notes** into structured departmental reports.
 
-**Nimbus** solves this by providing a unified, role-aware dashboard where AI agents handle these tasks in seconds, maintaining a consistent professional standard across the institution.
-
----
-
-## Live Demo
-- **Live Application**:
-- **Demo Video**:
+>**Nimbus** solves this by providing a unified, role-aware dashboard where AI agents handle these tasks in seconds, maintaining a consistent professional standard across the institution.
 
 ---
 
@@ -80,7 +56,7 @@ In an academic environment, administrative work often consumes a significant por
 
 ## User Guide
 
-Nimbus is designed to be intuitive and powerful. Below is a detailed guide on how to make the most of each agent.
+>Nimbus is designed to be intuitive and powerful. Below is a detailed guide on how to make the most of each agent.
 
 ### 1. Getting Started
 - **Account Creation**: Navigate to the **signup** page and provide your details.
@@ -219,7 +195,7 @@ The Dashboard is your control center.
 
 ---
 
-### API Documentation References
+## API Documentation References
 - Google Gemini API: https://ai.google.dev/gemini-api/docs/api-key
 - Hugging Face Inference API: https://huggingface.co/docs/inference-providers/en/tasks/text-to-image
 - Cloudinary Documentation: https://cloudinary.com/documentation

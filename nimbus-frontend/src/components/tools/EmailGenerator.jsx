@@ -228,7 +228,7 @@ export default function EmailGenerator() {
                             </div>
 
                             <div className="tool-form-group">
-                                <label>Email Prompt</label>
+                                <label>Email message</label>
                                 <textarea
                                     placeholder='Describe what the email should be about...'
                                     value={prompt}

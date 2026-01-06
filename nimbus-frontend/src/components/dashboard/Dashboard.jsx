@@ -46,7 +46,7 @@ const Dashboard = () => {
         <div className="dashboard-content-area">
           {/* Welcome Section */}
           <section className="welcome-section">
-            <h1 className="welcome-title">Welcome back, <span className="welcome-name">{user?.name?.split(' ')[0] || 'User'}</span>! 👋</h1>
+            <h1 className="welcome-title">Welcome , <span className="welcome-name">{user?.name?.split(' ')[0] || 'User'}</span>! 👋</h1>
             <p className="welcome-subtitle">Your personalized {role || 'workspace'} companion for academic excellence.</p>
           </section>
 

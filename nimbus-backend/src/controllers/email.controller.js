@@ -34,7 +34,7 @@ Drafting Guidelines:
 Draft the email now.email should be detailed and formal .
 don't leave any unnecessary lines in the email . write the fully professional email .
 write the mail in english only. don't write large mail ,try to limit it in 2-3 paragraphs only. 
-also don't write the subject in the mail body.
+also don't write the subject in the mail body. depending on the content try to write 1-3 paragraphs only.
 
 sample email generation example:-
     Date: December 11, 2025 To: All Students, IIT (ISM) Dhanbad From: Office of the Dean (Academic Affairs)
