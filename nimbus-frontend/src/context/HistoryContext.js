@@ -60,7 +60,7 @@ const transformActivities = (activities) => {
     return activities.map(activity => ({
         id: activity._id,
         type: activity.type,
-        title: `${activity.type.charAt(0).toUpperCase() + activity.type.slice(1)}: ${activity.title || activity.subject || 'Untitled'}`,
+        title: activity.title || activity.subject || 'Untitled',
         prompt: activity.prompt ? `Prompt: "${activity.prompt}"` : '',
         date: formatDate(activity.createdAt),
         status: activity.status || (activity.type === 'email' ? 'sent' : 'draft'),
@@ -80,6 +80,7 @@ const transformActivities = (activities) => {
         // Report specific data
         reportType: activity.reportType,
         rawInput: activity.rawInput,
+        rawTitle: activity.title, // Preserving raw title for editing
     }));
 };
 

@@ -147,7 +147,7 @@ export default function ReportGenerator() {
 
     const loadReport = (item) => {
         setReportType(item.reportType || "Meeting Minutes");
-        setTitle(item.title || "");
+        setTitle(item.rawTitle || item.title || "");
         setRawInput(item.rawInput || "");
         setReportContent(item.content || "");
         if (editorRef.current) {

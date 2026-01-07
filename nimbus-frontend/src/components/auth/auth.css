@@ -68,9 +68,9 @@
 }
 
 .otp-input-group {
-    display: grid !important;
-    grid-template-columns: repeat(6, 1fr) !important;
-    gap: 8px !important;
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 8px;
     margin-bottom: 32px;
 }
 

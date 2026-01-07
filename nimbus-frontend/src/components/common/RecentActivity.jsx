@@ -8,8 +8,10 @@ const RecentActivity = ({ filterType = 'All', limit = 3, showViewAll = true, tit
     const { historyItems, loading, deleteActivity } = useHistory();
     const navigate = useNavigate();
 
-    const filteredItems = historyItems.filter(item => {
+    let filteredItems = historyItems.filter(item => {
         if (filterType === 'All') return true;
+        if (filterType === 'Drafts') return item.status === 'draft';
+
         const typeMatch = item.type?.toLowerCase();
         const targetType = filterType.toLowerCase();
 
@@ -18,7 +20,11 @@ const RecentActivity = ({ filterType = 'All', limit = 3, showViewAll = true, tit
         if (targetType === 'logos') return typeMatch === 'logo';
         if (targetType === 'reports') return typeMatch === 'report';
         return typeMatch === targetType;
-    }).slice(0, limit);
+    });
+
+    if (limit) {
+        filteredItems = filteredItems.slice(0, limit);
+    }
 
     const handleDelete = async (e, id) => {
         e.preventDefault();
@@ -53,18 +59,20 @@ const RecentActivity = ({ filterType = 'All', limit = 3, showViewAll = true, tit
 
     return (
         <div className="recent-activity-wrapper">
-            <div className="section-header">
-                <h2 className="section-title">{title}</h2>
-                {showViewAll && (
-                    <Link
-                        to="/activity"
-                        state={{ initialFilter: filterType }}
-                        className="view-all-link"
-                    >
-                        View All →
-                    </Link>
-                )}
-            </div>
+            {title && (
+                <div className="section-header">
+                    <h2 className="section-title">{title}</h2>
+                    {showViewAll && (
+                        <Link
+                            to="/activity"
+                            state={{ initialFilter: filterType }}
+                            className="view-all-link"
+                        >
+                            View All →
+                        </Link>
+                    )}
+                </div>
+            )}
 
             <div className="activity-list">
                 {filteredItems.length === 0 ? (
@@ -75,7 +83,6 @@ const RecentActivity = ({ filterType = 'All', limit = 3, showViewAll = true, tit
                 ) : (
                     filteredItems.map((item) => (
                         <div key={item.id} className="activity-item">
-                            {/* Preview Box */}
                             <div className="preview-box">
                                 <span className="preview-box-icon">
                                     {item.previewIcon || (item.type?.toLowerCase() === 'email' ? '📧' : item.type?.toLowerCase() === 'logo' ? '🎯' : item.type?.toLowerCase() === 'report' ? '📊' : '🎨')}
@@ -85,14 +92,11 @@ const RecentActivity = ({ filterType = 'All', limit = 3, showViewAll = true, tit
                                 </span>
                             </div>
 
-                            {/* Details */}
                             <div className="activity-details">
                                 <h4 className="activity-title">{item.title}</h4>
                                 <p className="activity-prompt">{item.prompt}</p>
                                 <p className="activity-date">{item.date}</p>
                             </div>
-
-                            {/* Actions - Vertical as requested */}
                             <div className="activity-actions">
                                 <button
                                     className={`activity-action ${item.status === 'draft' ? 'edit' : 'view'}`}

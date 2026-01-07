@@ -2,7 +2,6 @@ import React from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import Sidebar from '../common/sidebar/sidebar';
 import Header from '../common/header/header';
-import '../dashboard/dashboard.css'; // Import global dashboard layout styles
 
 const ProtectedLayout = () => {
     const location = useLocation();

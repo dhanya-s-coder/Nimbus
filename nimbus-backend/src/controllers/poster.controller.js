@@ -82,7 +82,7 @@ export const generatePosterController = async (req, res) => {
             model: "stabilityai/stable-diffusion-xl-base-1.0",
             inputs: fullPrompt,
             parameters: {
-                negative_prompt: "ugly, blurry, low quality, distorted, extra limbs, bad anatomy, grainy, low resolution, watermark, text, signature, logo, deformed, amateur, messy, tacky, kitsch, overexposed, underexposed, low contrast, pixelated",
+                negative_prompt: "blurry, distorted text, low quality, messy, complex, photo, realistic, 3d, gradient background",
                 num_inference_steps: 30,
                 guidance_scale: 7.5,
             },
