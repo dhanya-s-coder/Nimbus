@@ -11,7 +11,7 @@ import {
     generatePasswordChangedEmailTemplate
 } from "../utils/otp.js";
 
-const sendOtpHelper = async (email, name, type = 'Signup', userData = null) => {
+const sendOtpHelper = async (email, name, type = 'signup', userData = null) => {
     const otp = generateOtp();
     const expiresAt = getOtpExpirationTime();
     const emailLower = email.toLowerCase();
@@ -24,7 +24,7 @@ const sendOtpHelper = async (email, name, type = 'Signup', userData = null) => {
     await sendEmail({
         to: emailLower,
         subject,
-        html: generateOtpEmailTemplate(otp, name, type === 'forgotPassword' ? 'Password Reset' : 'Signup'),
+        html: generateOtpEmailTemplate(otp, name, type === 'forgotPassword' ? 'Password Reset' : 'signup'),
         text: generateOtpPlainText(otp, name)
     });
     return { email: emailLower, expiresIn: 180 };
@@ -54,7 +54,7 @@ export const signupController = async (req, res) => {
 
         if (await User.findOne({ email: email.toLowerCase() })) return res.status(409).json({ error: "Email already registered" });
 
-        const result = await sendOtpHelper(email, name, 'Signup', { name, password, role: role || "Society Member" });
+        const result = await sendOtpHelper(email, name, 'signup', { name, password, role: role || "Society Member" });
         res.status(200).json({ message: "OTP sent successfully", ...result });
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -64,7 +64,7 @@ export const signupController = async (req, res) => {
 export const verifyOtpController = async (req, res) => {
     try {
         const { email, otp } = req.body;
-        const otpToken = await verifyOtpHelper(email, otp, 'Signup');
+        const otpToken = await verifyOtpHelper(email, otp, 'signup');
         const { name, password, role } = otpToken.userData;
 
         const newUser = new User({ name, email: email.toLowerCase(), password, role: role || "Society Member" });
@@ -87,10 +87,10 @@ export const verifyOtpController = async (req, res) => {
 export const resendOtpController = async (req, res) => {
     try {
         const { email } = req.body;
-        const otpToken = await OtpToken.findOne({ email: email.toLowerCase(), type: 'Signup' });
+        const otpToken = await OtpToken.findOne({ email: email.toLowerCase(), type: 'signup' });
         if (!otpToken) return res.status(400).json({ error: "Signup session not found" });
 
-        const result = await sendOtpHelper(email, otpToken.userData.name, 'Signup', otpToken.userData);
+        const result = await sendOtpHelper(email, otpToken.userData.name, 'signup', otpToken.userData);
         res.status(200).json({ message: "New OTP sent", ...result });
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -233,6 +233,6 @@ export const getCurrentUserController = async (req, res) => {
         if (!user) return res.status(404).json({ error: "User not found" });
         res.status(200).json({ user: { id: user._id, name: user.name, email: user.email, role: user.role } });
     } catch (error) {
-      res.status(500).json({ error: "Error fetching user" });
+        res.status(500).json({ error: "Error fetching user" });
     }
 };
