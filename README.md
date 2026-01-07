@@ -177,7 +177,11 @@ The Dashboard is your control center.
     ```bash
     npm install
     ```
-3.  Start the application:
+3.  Create a `.env` file and add the following:
+    ```env
+    REACT_APP_API_URL=http://localhost:5000
+    ```
+4.  Start the application:
     ```bash
     npm start
     ```
