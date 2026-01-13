@@ -41,6 +41,7 @@ export const generateLogoController = async (req, res) => {
 
         res.json({
             success: true,
+            message: "Logo generated successfully!",
             data: {
                 image: {
                     url: cloudinaryUrl,

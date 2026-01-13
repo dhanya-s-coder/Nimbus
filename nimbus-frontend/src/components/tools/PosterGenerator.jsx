@@ -89,6 +89,7 @@ const PosterGenerator = () => {
             if (templateType) setSelectedTemplate(templateType);
             if (savedFormData) setFormData(savedFormData);
             if (generatedImageUrl) setGeneratedImage(generatedImageUrl);
+            toast.success("Poster loaded successfully");
         }
     }, [location.state]);
 

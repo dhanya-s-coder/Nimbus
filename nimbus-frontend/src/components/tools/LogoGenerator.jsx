@@ -42,6 +42,7 @@ const LogoGenerator = () => {
             if (savedName) setLogoName(savedName);
             if (savedFormData) setFormData(savedFormData);
             if (generatedImageUrl) setGeneratedImage(generatedImageUrl);
+            toast.success("Logo loaded successfully");
         }
     }, [location.state]);
 

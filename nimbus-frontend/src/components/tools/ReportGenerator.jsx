@@ -24,6 +24,17 @@ export default function ReportGenerator() {
         }
     }, [location.state]);
 
+    const loadReport = (item) => {
+        setReportType(item.reportType || "Meeting Minutes");
+        setTitle(item.rawTitle || item.title || "");
+        setRawInput(item.rawInput || "");
+        setReportContent(item.content || "");
+        if (editorRef.current) {
+            editorRef.current.innerText = item.content || "";
+        }
+        toast.success("Report loaded successfully");
+    };
+
     const reportTypes = [
         "Meeting Minutes",
         "Event Summary",
@@ -143,17 +154,6 @@ export default function ReportGenerator() {
         a.download = `Report: ${title || 'Untitled'}(By Nimbus).txt`;
         a.click();
         URL.revokeObjectURL(url);
-    };
-
-    const loadReport = (item) => {
-        setReportType(item.reportType || "Meeting Minutes");
-        setTitle(item.rawTitle || item.title || "");
-        setRawInput(item.rawInput || "");
-        setReportContent(item.content || "");
-        if (editorRef.current) {
-            editorRef.current.innerText = item.content || "";
-        }
-        toast.info("Report loaded successfully");
     };
 
     return (

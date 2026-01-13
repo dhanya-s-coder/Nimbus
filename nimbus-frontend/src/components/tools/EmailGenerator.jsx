@@ -18,6 +18,17 @@ export default function EmailGenerator() {
         }
     }, [location.state]);
 
+    const loadDraft = (item) => {
+    setSubject(item.subject || "");
+    setPrompt(item.rawPrompt || "");
+    setDraft(item.content || "");
+    setRecipientEmail(item.recipient || "");
+    if (editorRef.current) {
+        editorRef.current.innerText = item.content || "";
+    }
+    toast.success("Email loaded successfully");
+    };
+
     const [subject, setSubject] = useState("");
     const [recipientEmail, setRecipientEmail] = useState("");
     const [prompt, setPrompt] = useState("");
@@ -183,17 +194,6 @@ export default function EmailGenerator() {
         } catch (error) {
             toast.error("An error occurred while saving.");
         }
-    };
-
-    const loadDraft = (item) => {
-        setSubject(item.subject || "");
-        setPrompt(item.rawPrompt || "");
-        setDraft(item.content || "");
-        setRecipientEmail(item.recipient || "");
-        if (editorRef.current) {
-            editorRef.current.innerText = item.content || "";
-        }
-        toast.info("Draft loaded successfully");
     };
 
     return (
