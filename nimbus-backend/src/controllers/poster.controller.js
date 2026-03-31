@@ -3,88 +3,90 @@ import { User } from "../models/User.js";
 import { savePosterDraft, getActivityByUserAndType, deleteActivity } from "../services/history.service.js";
 import { uploadBufferToCloudinary } from "../utils/cloudinaryHelper.js";
 
-const TEMPLATE_PROMPTS = {
-    academic: `A high-quality, professional academic seminar poster. Masterpiece, ultra-detailed, 8k resolution.
-- Style: Clean, formal, institutional graphic design.
-- Background: Minimalist white or very light gray with subtle professional geometric accents.
-- Layout: Structured grid, clear visual hierarchy, professional typography.
-- Colors: Sophisticated navy blue and charcoal gray accents.
-- Atmosphere: Intellectual, serious, and organized.`,
+const buildBackgroundPrompt = (eventName = "", category = "", theme = "") => {
+    const n = (eventName + " " + category + " " + theme).toLowerCase();
 
-    recruitment: `A premium corporate recruitment and hiring poster. Masterpiece, sharp focus, trend-setting design.
-- Style: Modern business aesthetic, clean corporate graphic design.
-- Background: Professional blurred office background or elegant solid corporate blue.
-- Layout: Bold call-to-action, prominent headings, clean spacing.
-- Colors: Energetic mix of professional blue, white, and subtle gold accents.
-- Atmosphere: Ambitious, welcoming, and high-end.`,
+    let stylePrompt = "";
 
-    event: `A vibrant and stunning event festival poster. High-energy, colorful, masterpiece level design.
-- Style: Creative, dynamic, and modern graphic design.
-- Background: Energetic abstract patterns, vibrant gradients, or festive atmosphere.
-- Layout: Exciting typography, overlapping elements, clear time and venue details.
-- Colors: Rich, saturated palette (e.g., sunset oranges, deep purples, and electric blues).
-- Atmosphere: Celebratory, exciting, and highly engaging.`,
+    if (n.includes("hack") || n.includes("code") || n.includes("tech")
+        || n.includes("program") || n.includes("competitive"))
+        stylePrompt = `dark cyberpunk cityscape, deep teal and electric blue 
+    gradient, glowing circuit board patterns, binary code atmosphere, 
+    neon light trails, futuristic tech aesthetic, dramatic lighting, 
+    ultra detailed 4k`;
 
-    hackathon: `A futuristic, high-tech hackathon poster. Cyberpunk aesthetic, neon lighting, ultra-detailed 8k.
-- Style: Sci-fi tech design, glowing circuits, digital network visuals.
-- Background: Deep dark navy or black with glowing neon cyan and magenta accents.
-- Layout: Modern tech fonts, futuristic data overlays, crisp sharp lines.
-- Colors: Electric blue, neon green, and ultraviolet highlights.
-- Atmosphere: Innovative, cutting-edge, and high-speed.`,
+    else if (n.includes("recruit") || n.includes("career") || n.includes("job")
+        || n.includes("hiring") || n.includes("placement"))
+        stylePrompt = `sleek corporate abstract background, deep navy blue 
+    and gold gradient, geometric diamond shapes, professional luxury, 
+    soft bokeh lights, modern minimalist architecture, premium feel, 4k`;
 
-    announcement: `A clean, authoritative official announcement poster. High resolution, clear and legible.
-- Style: Professional signage, Swiss-style graphic design.
-- Background: High-contrast solid color or subtle paper texture.
-- Layout: Grid-based, bold headlines, easy-to-read body text.
-- Colors: High-contrast (e.g., Red/White or Black/Teal).
-- Atmosphere: Urgent, informative, and official.`
+    else if (n.includes("cultural") || n.includes("fest") || n.includes("music")
+        || n.includes("dance") || n.includes("art") || n.includes("drama"))
+        stylePrompt = `vibrant festival atmosphere, rich jewel tone gradients,
+    purple magenta and gold bokeh, celebratory confetti blur, 
+    dynamic colorful energy, stage lights, euphoric atmosphere, 4k`;
+
+    else if (n.includes("sport") || n.includes("game") || n.includes("tournament")
+        || n.includes("championship") || n.includes("match"))
+        stylePrompt = `dramatic stadium under floodlights, bold red and orange 
+    gradient, dynamic motion blur streaks, epic competitive atmosphere, 
+    volumetric god rays, high energy, 4k`;
+
+    else if (n.includes("workshop") || n.includes("seminar") || n.includes("talk")
+        || n.includes("lecture") || n.includes("session") || n.includes("pitch"))
+        stylePrompt = `elegant minimal abstract background, soft indigo and 
+    violet gradient, geometric flowing shapes, clean professional, 
+    subtle light beam rays, knowledge and growth theme, 4k`;
+
+    else if (n.includes("social") || n.includes("networking") || n.includes("meetup")
+        || n.includes("community") || n.includes("connect"))
+        stylePrompt = `warm modern interior atmosphere, golden hour light, 
+    soft amber and cream gradients, subtle bokeh, welcoming professional 
+    networking vibe, premium lounge feel, 4k`;
+
+    else
+        stylePrompt = `beautiful abstract gradient background, deep midnight 
+    blue and royal purple, smooth flowing light shapes, modern premium, 
+    subtle geometric patterns, sophisticated, 4k`;
+
+    return `${stylePrompt}, 
+    poster background template only, 
+    empty clean composition with space for text overlay,
+    NO text, NO letters, NO words, NO typography, NO watermarks,
+    NO people, NO faces, NO hands, NO logos,
+    vertical portrait orientation, 4:5 aspect ratio`;
 };
 
-const buildUserPrompt = (templateType, formData) => {
-    if (!formData || typeof formData !== "object") {
-        throw new Error("Invalid formData provided");
-    }
-
-    let prompt = `Include the following textual content on the poster:\n`;
-
-    for (const [key, value] of Object.entries(formData)) {
-        if (value && String(value).trim() !== "") {
-            const label = key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
-            prompt += `- ${label}: ${String(value).trim()}\n`;
-        }
-    }
-
-    prompt += `\nTechnical requirements: High-quality professional graphic design, sharp text rendering (simulated), balanced composition, rule of thirds, photorealistic quality.`;
-
-    return prompt;
-};
+const NEGATIVE_PROMPT = `text, letters, words, typography, watermark, 
+signature, title, heading, caption, numbers, fonts, alphabet, writing, 
+labels, stamps, banners, people, faces, hands, bodies, portraits,
+ugly, blurry, low quality, distorted, noisy, grainy, overexposed,
+underexposed, bad composition, cluttered, messy`;
 
 // const hf = new InferenceClient(process.env.HF_API_KEY);
 const hf = new HfInference(process.env.HF_API_KEY);
 
 export const generatePosterController = async (req, res) => {
     try {
-        const { templateType, formData } = req.body;
+        const { eventName, category, theme, formData } = req.body;
 
-        if (!templateType || !formData) {
-            return res.status(400).json({ success: false, message: "Missing required fields" });
-        }
+        const finalEventName = eventName || (formData && formData.eventName) || "";
+        const finalCategory = category || (formData && formData.eventType) || (formData && formData.category) || (req.body.templateType) || "";
+        const finalTheme = theme || (formData && formData.theme) || "";
 
-        if (!TEMPLATE_PROMPTS[templateType]) {
-            return res.status(400).json({ success: false, message: "Invalid template type" });
-        }
-
-        const systemPrompt = TEMPLATE_PROMPTS[templateType];
-        const userPrompt = buildUserPrompt(templateType, formData);
-        const fullPrompt = `${systemPrompt}\n\nDetails:\n${userPrompt}`;
+        const generatedPrompt = buildBackgroundPrompt(finalEventName, finalCategory, finalTheme);
+        console.log("🎨 Generated SDXL Prompt:", generatedPrompt);
 
         const imageBlob = await hf.textToImage({
             model: "stabilityai/stable-diffusion-xl-base-1.0",
-            inputs: fullPrompt,
+            inputs: generatedPrompt,
             parameters: {
-                negative_prompt: "blurry, distorted text, low quality, messy, complex, photo, realistic, 3d, gradient background",
-                num_inference_steps: 30,
-                guidance_scale: 7.5,
+                negative_prompt: NEGATIVE_PROMPT,
+                num_inference_steps: 35,
+                guidance_scale: 8.0,
+                width: 832,
+                height: 1040
             },
         });
 

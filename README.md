@@ -35,10 +35,11 @@ In an academic environment, administrative work often consumes a significant por
 - **Export**: Generated email content can be exported to the user's local system.
 
 ### Poster Generation Agent
-- **Template Options**: User can select from Academic, Recruitment, Event, Hackathon, or Announcement templates and fill in the required input fields accordingly.
-- **AI Generation**: posters are generated using **Stable Diffusion XL** via Hugging Face.
+- **AI Design Director**: Instead of static templates, a Gemini-powered "Design Director" analyzes user inputs (event name, category) to construct tailored styling specifications, color palettes, and typography decisions.
+- **SDXL Background Generation**: Guided by Gemini's dynamic prompt output, **Stable Diffusion XL** (via Hugging Face) generates high-quality, perfectly-themed background imagery.
+- **Dynamic Modular Frontend**: A meticulously crafted React rendering engine (`PosterOverlay`) seamlessly overlays the Gemini-dictated design elements onto the SDXL image, presenting an instantly download-ready final poster.
 - **Audits**: All generated posters are saved as drafts or finals, and are tracked accordingly.
-- **Export**: Generated poster content can be exported to the user's local system.
+- **Export**: Generated poster content can be exported to the user's local system as a high-quality PNG.
 
 ### Logo Generation Agent
 - **Brand Identity**: User can define the brand name, tagline, and preferred style (Minimal, Modern, Bold, etc.) to guide logo creation.
@@ -122,10 +123,10 @@ The Dashboard is your control center.
 - **JWT**: Secure authentication using access and refresh tokens
 
 ### AI & Services
-- **Google Gemini API**: Email and report content generation
-- **Hugging Face Inference**: Stable Diffusion XL for poster and logo generation
-- **Cloudinary**: Media hosting for generated posters and logos
-- **Nodemailer**: SMTP-based email delivery
+- **Google Gemini API**: Email/report content generation, and sophisticated "Design Director" orchestration for poster styling parameters.
+- **Hugging Face Inference**: Stable Diffusion XL for background poster and logo image generation.
+- **Cloudinary**: Media hosting for generated posters and logos.
+- **Nodemailer**: SMTP-based email delivery.
 
 
 ---

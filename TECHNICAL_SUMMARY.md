@@ -6,6 +6,7 @@ Nimbus is built on the **MERN** (MongoDB, Express, React, Node.js) stack, follow
 ### Key Design Decisions:
 - **Cloudinary for Fast Images**: We decided to use Cloudinary to store and host all AI-generated images. This keeps our database lightweight and ensures that your posters and logos load instantly and can be downloaded in high quality.
 - **Smart Form-to-AI Logic**: Instead of making users learn how to talk to AI, we use simple forms. The system automatically turns your basic input into a professional instruction for the AI behind the scenes.
+- **Gemini Design Orchestration**: We decoupled art elements from typography by utilizing Gemini 2.5 Flash as a "Design Director." It ingests context, orchestrating nuanced stylistic decisions (layout, mood, colors, typography) which dynamically inform Stable Diffusion XL rendering and our CSS frontend overlay overlays seamlessly.
 
 ---
 
@@ -49,9 +50,9 @@ Nimbus is built on the **MERN** (MongoDB, Express, React, Node.js) stack, follow
 ---
 
 ## Third-Party Integrations & APIs
-- **Google Generative AI SDK**: Core text generation.
-- **Hugging Face Inference API**: Stable Diffusion XL access.
-- **Cloudinary SDK**: Media storage.
+- **Google Generative AI SDK**: Core text generation, administrative synthesis, and the overarching "Design Director" engine orchestrating visual configurations.
+- **Hugging Face Inference API**: Stable Diffusion XL model access for bespoke visual elements (Backgrounds & Logos).
+- **Cloudinary SDK**: Extensible scalable media storage infrastructure.
 
 ---
 
