@@ -38,7 +38,7 @@ const LogoGenerator = () => {
 
     useEffect(() => {
         if (location.state && location.state.logoData) {
-            const { id, logoName: savedName, formData: savedFormData, generatedImageUrl } = location.state.logoData;
+            const { logoName: savedName, formData: savedFormData, generatedImageUrl } = location.state.logoData;
             if (savedName) setLogoName(savedName);
             if (savedFormData) setFormData(savedFormData);
             if (generatedImageUrl) setGeneratedImage(generatedImageUrl);
@@ -273,7 +273,7 @@ const LogoGenerator = () => {
                                 <div className="tool-preview-loading">
                                     <div className="spinner"></div>
                                     <p>Generating your logo...</p>
-                                    <p className="loading-hint">Dreaming up your brand identity</p>
+                                    <p className="loading-hint">Running AI design pipeline...</p>
                                 </div>
                             ) : generatedImage ? (
                                 <div className="preview-content">

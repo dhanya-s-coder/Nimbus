@@ -1,66 +1,36 @@
-import { HfInference } from "@huggingface/inference";
-import { User } from "../models/User.js";
+import { DesignAsset } from "../models/DesignAsset.js";
 import { savePosterDraft, getActivityByUserAndType, deleteActivity } from "../services/history.service.js";
 import { uploadBufferToCloudinary } from "../utils/cloudinaryHelper.js";
+import { embedText, generateImage, ingestDesignAsset } from "../services/gemini.service.js";
 
-const TEMPLATE_PROMPTS = {
-    academic: `A high-quality, professional academic seminar poster. Masterpiece, ultra-detailed, 8k resolution.
-- Style: Clean, formal, institutional graphic design.
-- Background: Minimalist white or very light gray with subtle professional geometric accents.
-- Layout: Structured grid, clear visual hierarchy, professional typography.
-- Colors: Sophisticated navy blue and charcoal gray accents.
-- Atmosphere: Intellectual, serious, and organized.`,
+/**
+ * Build a natural-language prompt string from the template type and user form data.
+ */
+const buildPromptFromForm = (templateType, formData) => {
+    const templateLabels = {
+        academic: "Academic / Seminar",
+        recruitment: "Recruitment / Hiring",
+        event: "Event / Festival",
+        hackathon: "Hackathon / Tech",
+        announcement: "Official Announcement"
+    };
 
-    recruitment: `A premium corporate recruitment and hiring poster. Masterpiece, sharp focus, trend-setting design.
-- Style: Modern business aesthetic, clean corporate graphic design.
-- Background: Professional blurred office background or elegant solid corporate blue.
-- Layout: Bold call-to-action, prominent headings, clean spacing.
-- Colors: Energetic mix of professional blue, white, and subtle gold accents.
-- Atmosphere: Ambitious, welcoming, and high-end.`,
-
-    event: `A vibrant and stunning event festival poster. High-energy, colorful, masterpiece level design.
-- Style: Creative, dynamic, and modern graphic design.
-- Background: Energetic abstract patterns, vibrant gradients, or festive atmosphere.
-- Layout: Exciting typography, overlapping elements, clear time and venue details.
-- Colors: Rich, saturated palette (e.g., sunset oranges, deep purples, and electric blues).
-- Atmosphere: Celebratory, exciting, and highly engaging.`,
-
-    hackathon: `A futuristic, high-tech hackathon poster. Cyberpunk aesthetic, neon lighting, ultra-detailed 8k.
-- Style: Sci-fi tech design, glowing circuits, digital network visuals.
-- Background: Deep dark navy or black with glowing neon cyan and magenta accents.
-- Layout: Modern tech fonts, futuristic data overlays, crisp sharp lines.
-- Colors: Electric blue, neon green, and ultraviolet highlights.
-- Atmosphere: Innovative, cutting-edge, and high-speed.`,
-
-    announcement: `A clean, authoritative official announcement poster. High resolution, clear and legible.
-- Style: Professional signage, Swiss-style graphic design.
-- Background: High-contrast solid color or subtle paper texture.
-- Layout: Grid-based, bold headlines, easy-to-read body text.
-- Colors: High-contrast (e.g., Red/White or Black/Teal).
-- Atmosphere: Urgent, informative, and official.`
-};
-
-const buildUserPrompt = (templateType, formData) => {
-    if (!formData || typeof formData !== "object") {
-        throw new Error("Invalid formData provided");
-    }
-
-    let prompt = `Include the following textual content on the poster:\n`;
-
+    let prompt = `A professional ${templateLabels[templateType] || templateType} poster`;
+    
+    const parts = [];
     for (const [key, value] of Object.entries(formData)) {
-        if (value && String(value).trim() !== "") {
-            const label = key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
-            prompt += `- ${label}: ${String(value).trim()}\n`;
+        if (value && String(value).trim()) {
+            const label = key.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase());
+            parts.push(`${label}: ${String(value).trim()}`);
         }
     }
-
-    prompt += `\nTechnical requirements: High-quality professional graphic design, sharp text rendering (simulated), balanced composition, rule of thirds, photorealistic quality.`;
+    
+    if (parts.length > 0) {
+        prompt += ` with the following details: ${parts.join(", ")}`;
+    }
 
     return prompt;
 };
-
-// const hf = new InferenceClient(process.env.HF_API_KEY);
-const hf = new HfInference(process.env.HF_API_KEY);
 
 export const generatePosterController = async (req, res) => {
     try {
@@ -70,43 +40,86 @@ export const generatePosterController = async (req, res) => {
             return res.status(400).json({ success: false, message: "Missing required fields" });
         }
 
-        if (!TEMPLATE_PROMPTS[templateType]) {
-            return res.status(400).json({ success: false, message: "Invalid template type" });
+        // Step 1: Build natural-language prompt from user input
+        const userPrompt = buildPromptFromForm(templateType, formData);
+        console.log(`📝 User prompt: ${userPrompt.substring(0, 100)}...`);
+
+        // Step 2: Embed the user's prompt to get query vector
+        const queryVector = await embedText(userPrompt);
+        console.log(`📊 Query vector generated: ${queryVector.length} dims`);
+
+        // Step 3: RAG Retrieve — find closest matching design via Vector Search
+        let retrievedContext = "";
+        try {
+            const results = await DesignAsset.aggregate([
+                {
+                    $vectorSearch: {
+                        index: "design_asset_vector_index",
+                        path: "embedding",
+                        queryVector: queryVector,
+                        numCandidates: 50,
+                        limit: 1,
+                        filter: { type: "poster" }
+                    }
+                },
+                {
+                    $project: {
+                        description: 1,
+                        cloudinaryUrl: 1,
+                        score: { $meta: "vectorSearchScore" }
+                    }
+                }
+            ]);
+
+            if (results.length > 0) {
+                retrievedContext = results[0].description;
+                console.log(`🎯 RAG match found (score: ${results[0].score?.toFixed(3)}): ${retrievedContext.substring(0, 80)}...`);
+            } else {
+                console.log("⚠️  No RAG matches found — generating without context");
+            }
+        } catch (ragError) {
+            console.warn("⚠️  Vector search unavailable (index may not exist yet):", ragError.message);
         }
 
-        const systemPrompt = TEMPLATE_PROMPTS[templateType];
-        const userPrompt = buildUserPrompt(templateType, formData);
-        const fullPrompt = `${systemPrompt}\n\nDetails:\n${userPrompt}`;
+        // Step 4: Augment — combine user prompt + retrieved aesthetic context
+        let imagenPrompt = `Create a high-quality, professional poster design. ${userPrompt}.`;
+        imagenPrompt += ` Technical requirements: Clean composition, sharp typography, balanced layout, vibrant colors, print-ready quality, 4k resolution.`;
+        
+        if (retrievedContext) {
+            imagenPrompt += ` Strictly match this design aesthetic: ${retrievedContext}`;
+        }
 
-        const imageBlob = await hf.textToImage({
-            model: "stabilityai/stable-diffusion-xl-base-1.0",
-            inputs: fullPrompt,
-            parameters: {
-                negative_prompt: "blurry, distorted text, low quality, messy, complex, photo, realistic, 3d, gradient background",
-                num_inference_steps: 30,
-                guidance_scale: 7.5,
-            },
-        });
+        // Step 5: Generate image via Imagen
+        console.log("🎨 Generating poster via Imagen...");
+        const imageBuffer = await generateImage(imagenPrompt);
 
-        const arrayBuffer = await imageBlob.arrayBuffer();
-        const buffer = Buffer.from(arrayBuffer);
+        // Step 6: Upload to Cloudinary
+        console.log("☁️  Uploading poster to Cloudinary...");
+        const cloudinaryUrl = await uploadBufferToCloudinary(imageBuffer, "nimbus");
+        console.log("✅ Poster uploaded:", cloudinaryUrl);
 
-        // Upload to Cloudinary
-        console.log("Uploading poster to Cloudinary...");
-        const cloudinaryUrl = await uploadBufferToCloudinary(buffer, 'nimbus');
-        console.log("Poster uploaded to Cloudinary:", cloudinaryUrl);
+        // Step 7: Self-learning ingest (fire-and-forget — don't block the response)
+        const userId = req.user?.userId || null;
+        ingestDesignAsset(cloudinaryUrl, "poster", userId, userPrompt, templateType);
 
+        // Respond
         res.json({
             success: true,
+            message: "Poster generated successfully!",
             data: {
                 image: {
-                    mimeType: imageBlob.type || "image/jpeg",
+                    mimeType: "image/png",
                     url: cloudinaryUrl
                 }
             }
         });
     } catch (error) {
         console.error("❌ Poster Generation Error:", error);
+        
+        if (error.message?.includes("loading") || error.message?.includes("503")) {
+            return res.status(503).json({ success: false, message: "AI model is loading. Please wait a few seconds and try again." });
+        }
+        
         res.status(500).json({ success: false, message: "Failed to generate poster", error: error.message });
     }
 };

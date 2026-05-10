@@ -85,7 +85,7 @@ const PosterGenerator = () => {
 
     useEffect(() => {
         if (location.state && location.state.posterData) {
-            const { id, templateType, formData: savedFormData, generatedImageUrl } = location.state.posterData;
+            const { templateType, formData: savedFormData, generatedImageUrl } = location.state.posterData;
             if (templateType) setSelectedTemplate(templateType);
             if (savedFormData) setFormData(savedFormData);
             if (generatedImageUrl) setGeneratedImage(generatedImageUrl);
@@ -332,7 +332,7 @@ const PosterGenerator = () => {
                                 <div className="tool-preview-loading">
                                     <div className="spinner"></div>
                                     <p>Generating your poster...</p>
-                                    <p className="loading-hint">This may take a moment</p>
+                                    <p className="loading-hint">Running AI design pipeline...</p>
                                 </div>
                             ) : generatedImage ? (
                                 <div className="preview-content">

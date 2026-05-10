@@ -18,8 +18,6 @@ app.use(cors({
     origin: ["http://localhost:3000", "http://localhost:3001"],
     credentials: true
 }));
-// Increased limit to handle large base64 encoded poster images (~1-2MB each)
-// TODO: Consider storing images in a cloud bucket (S3/Cloudinary) and saving only URLs in DB for better performance
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ limit: "10mb", extended: true }));
 

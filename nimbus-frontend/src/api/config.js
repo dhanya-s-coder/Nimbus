@@ -54,6 +54,8 @@ const axiosInstance = axios.create({
 export default axiosInstance;
 
 
+let refreshPromise = null;
+
 export const fetchWithAuth = async (url, options = {}) => {
   const accessToken = localStorage.getItem('accessToken');
 
@@ -74,21 +76,34 @@ export const fetchWithAuth = async (url, options = {}) => {
   if (response.status === 401) {
     const refreshToken = localStorage.getItem('refreshToken');
     if (refreshToken) {
-      try {
-        const refreshResponse = await fetch(API_ENDPOINTS.AUTH.REFRESH_TOKEN, {
+      if (!refreshPromise) {
+        refreshPromise = fetch(API_ENDPOINTS.AUTH.REFRESH_TOKEN, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ refreshToken }),
+        }).then(async refreshResponse => {
+          if (refreshResponse.ok) {
+            const refreshData = await refreshResponse.json();
+            localStorage.setItem('accessToken', refreshData.accessToken);
+            localStorage.setItem('refreshToken', refreshData.refreshToken);
+            return refreshData.accessToken;
+          } else {
+            throw new Error("Refresh failed");
+          }
+        }).catch(error => {
+          console.error('Token refresh failed:', error);
+          throw error;
+        }).finally(() => {
+          refreshPromise = null;
         });
+      }
 
-        if (refreshResponse.ok) {
-          const refreshData = await refreshResponse.json();
-          localStorage.setItem('accessToken', refreshData.accessToken);
-          localStorage.setItem('refreshToken', refreshData.refreshToken);
-          return fetchWithAuth(url, options);
-        }
+      try {
+        await refreshPromise;
+        // Retry the request after successful refresh
+        return fetchWithAuth(url, options);
       } catch (error) {
-        console.error('Token refresh failed:', error);
+        // Refresh failed, proceed to logout
       }
     }
 

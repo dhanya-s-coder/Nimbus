@@ -13,7 +13,7 @@ import EmailGenerator from "./components/tools/EmailGenerator";
 import LogoIdeas from "./components/tools/LogoGenerator";
 import PosterGenerator from "./components/tools/PosterGenerator";
 import ReportGenerator from "./components/tools/ReportGenerator";
-import Activity from "./components/tools/history/activity";
+import Activity from "./components/tools/history/Activity";
 import { HistoryProvider } from "./context/HistoryContext";
 import ProtectedLayout from './components/zprotect/ProtectedLayout'
 

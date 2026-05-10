@@ -1,21 +1,8 @@
 import { sendEmail } from "../services/email.service.js";
 import { getActivityByUser, saveEmailDraft, saveSentEmail, deleteActivity, getActivityByUserAndType } from "../services/history.service.js";
-import { GoogleGenerativeAI } from "@google/generative-ai";
-
-const apiKey = process.env.GEMINI_API_KEY;
-
-if (!apiKey) {
-    console.warn("⚠️  WARNING: GEMINI_API_KEY is not set in .env file");
-}
-
-const genAI = apiKey ? new GoogleGenerativeAI(apiKey) : null;
-const model = genAI ? genAI.getGenerativeModel({ model: "gemini-2.5-flash" }) : null;
+import { generateText } from "../services/gemini.service.js";
 
 async function generateEmail({ subject, prompt }) {
-    if (!model) {
-        throw new Error("AI model not initialized. Check GEMINI_API_KEY in .env file.");
-    }
-
     const fullPrompt = `
 You are an expert professional communications assistant at a prestigious academic institution. Your task is to draft a high-quality, formal email based on the specific parameters provided below.
 
@@ -54,8 +41,8 @@ sample email generation example:-
 `;
 
     try {
-        const result = await model.generateContent(fullPrompt);
-        return result.response.text();
+        const emailBody = await generateText(fullPrompt);
+        return emailBody;
     } catch (error) {
         console.error("Gemini API Error:", error.message);
         throw new Error(`Failed to generate email: ${error.message}`);

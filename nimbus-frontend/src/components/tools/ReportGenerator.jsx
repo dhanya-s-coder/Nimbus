@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 import { API_ENDPOINTS, fetchWithAuth } from "../../api/config";
 import { useHistory } from "../../context/HistoryContext";
 import { toast } from "../../utils/toast";

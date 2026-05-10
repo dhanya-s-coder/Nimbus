@@ -25,7 +25,9 @@ export const authMiddleware = (req, res, next) => {
         req.user = decoded;
         next();
     } catch (error) {
-        console.error("❌ Auth Middleware Error:", error.message);
+        if (!error.message.includes("expired")) {
+            console.error("❌ Auth Middleware Error:", error.message);
+        }
         res.status(401).json({
             success: false,
             message: "Unauthorized",

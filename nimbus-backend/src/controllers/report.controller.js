@@ -1,9 +1,5 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { generateText } from "../services/gemini.service.js";
 import { saveReport, getActivityByUserAndType, deleteActivity } from "../services/history.service.js";
-
-const apiKey = process.env.GEMINI_API_KEY;
-const genAI = apiKey ? new GoogleGenerativeAI(apiKey) : null;
-const model = genAI ? genAI.getGenerativeModel({ model: "gemini-2.5-flash" }) : null;
 
 export const generateReportController = async (req, res) => {
     try {
@@ -11,10 +7,6 @@ export const generateReportController = async (req, res) => {
 
         if (!reportType || !title || !rawInput) {
             return res.status(400).json({ success: false, message: "Missing required fields" });
-        }
-
-        if (!model) {
-            return res.status(500).json({ success: false, message: "AI model not initialized" });
         }
 
         const prompt = `
@@ -37,8 +29,7 @@ Guidelines:
 Generate the report now in English.
 `;
 
-        const result = await model.generateContent(prompt);
-        const reportContent = result.response.text();
+        const reportContent = await generateText(prompt);
 
         res.json({
             success: true,

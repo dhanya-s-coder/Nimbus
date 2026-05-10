@@ -1,9 +1,29 @@
-import { HfInference } from "@huggingface/inference";
-import { User } from "../models/User.js";
+import { DesignAsset } from "../models/DesignAsset.js";
 import { getActivityByUserAndType, deleteActivity, saveLogoDraft } from "../services/history.service.js";
 import { uploadBufferToCloudinary } from "../utils/cloudinaryHelper.js";
+import { embedText, generateImage, ingestDesignAsset } from "../services/gemini.service.js";
 
-const hf = new HfInference(process.env.HF_API_KEY);
+/**
+ * Build a natural-language prompt from the logo form inputs.
+ */
+const buildLogoPrompt = (logoName, formData) => {
+    const { tagline, category, style, color, iconPreference } = formData || {};
+    
+    let prompt = `A clean, professional logo for "${logoName}"`;
+    
+    const parts = [];
+    if (category) parts.push(`in the ${category} category`);
+    if (style) parts.push(`with a ${style} style`);
+    if (color && color !== "Auto") parts.push(`using a ${color} color palette`);
+    if (tagline) parts.push(`with the tagline "${tagline}"`);
+    if (iconPreference) parts.push(`incorporating a ${iconPreference} icon`);
+    
+    if (parts.length > 0) {
+        prompt += ` ${parts.join(", ")}`;
+    }
+
+    return prompt;
+};
 
 export const generateLogoController = async (req, res) => {
     try {
@@ -13,32 +33,70 @@ export const generateLogoController = async (req, res) => {
             return res.status(400).json({ success: false, message: "Logo name is required" });
         }
 
-        const prompt = `Generate a clean, professional, and minimal logo for a ${category || 'brand'}.
-        Brand name: ${logoName}
-        ${tagline ? `Tagline: ${tagline}` : ''}
-        Style: ${style || 'Modern'}
-        Color preference: ${color || 'AI decides'}
-        Icon preference: ${iconPreference || 'geometric shape'}
-        The logo should be flat design, centered, and high resolution. 
-        Ensure a clean, solid background (white or neutral). 
-        Avoid messy text, avoid realistic photo details, avoid mockups.
-        Masterpiece, vector style, 4k, crisp edges.`;
+        const formData = { tagline, category, style, color, iconPreference };
 
-        const imageResponse = await hf.textToImage({
-            model: "stabilityai/stable-diffusion-xl-base-1.0",
-            inputs: prompt,
-            parameters: {
-                negative_prompt: "blurry, distorted text, low quality, messy, complex, photo, realistic, 3d, gradient background"
+        // Step 1: Build natural-language prompt
+        const userPrompt = buildLogoPrompt(logoName, formData);
+        console.log(`📝 Logo prompt: ${userPrompt}`);
+
+        // Step 2: Embed the prompt for vector search
+        const queryVector = await embedText(userPrompt);
+        console.log(`📊 Query vector generated: ${queryVector.length} dims`);
+
+        // Step 3: RAG Retrieve — find closest matching logo design
+        let retrievedContext = "";
+        try {
+            const results = await DesignAsset.aggregate([
+                {
+                    $vectorSearch: {
+                        index: "design_asset_vector_index",
+                        path: "embedding",
+                        queryVector: queryVector,
+                        numCandidates: 50,
+                        limit: 1,
+                        filter: { type: "logo" }
+                    }
+                },
+                {
+                    $project: {
+                        description: 1,
+                        cloudinaryUrl: 1,
+                        score: { $meta: "vectorSearchScore" }
+                    }
+                }
+            ]);
+
+            if (results.length > 0) {
+                retrievedContext = results[0].description;
+                console.log(`🎯 RAG match found (score: ${results[0].score?.toFixed(3)}): ${retrievedContext.substring(0, 80)}...`);
+            } else {
+                console.log("⚠️  No RAG matches found — generating without context");
             }
-        });
+        } catch (ragError) {
+            console.warn("⚠️  Vector search unavailable:", ragError.message);
+        }
 
-        const arrayBuffer = await imageResponse.arrayBuffer();
-        const buffer = Buffer.from(arrayBuffer);
+        // Step 4: Augment — build rich Imagen prompt
+        let imagenPrompt = `Create a ${userPrompt}. The logo should be flat design, centered, high resolution, with a clean solid background. Vector style, crisp edges, professional branding quality, 4k.`;
+        
+        if (retrievedContext) {
+            imagenPrompt += ` Strictly match this design aesthetic: ${retrievedContext}`;
+        }
 
-        console.log("Uploading logo to Cloudinary....");
-        const cloudinaryUrl = await uploadBufferToCloudinary(buffer, 'nimbus');
-        console.log("Logo uploaded to Cloudinary:", cloudinaryUrl);
+        // Step 5: Generate image via Imagen
+        console.log("🎨 Generating logo via Imagen...");
+        const imageBuffer = await generateImage(imagenPrompt);
 
+        // Step 6: Upload to Cloudinary
+        console.log("☁️  Uploading logo to Cloudinary...");
+        const cloudinaryUrl = await uploadBufferToCloudinary(imageBuffer, "nimbus");
+        console.log("✅ Logo uploaded:", cloudinaryUrl);
+
+        // Step 7: Self-learning ingest (fire-and-forget)
+        const userId = req.user?.userId || null;
+        ingestDesignAsset(cloudinaryUrl, "logo", userId, userPrompt, style || "modern");
+
+        // Respond
         res.json({
             success: true,
             message: "Logo generated successfully!",
@@ -59,7 +117,6 @@ export const saveLogoController = async (req, res) => {
     try {
         const { logoName, formData, generatedImageUrl, status } = req.body;
         const userId = req.user?.userId;
-        console.log(generatedImageUrl);
 
         if (!userId) return res.status(401).json({ success: false, message: "Unauthorized" });
 
