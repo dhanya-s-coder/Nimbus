@@ -7,7 +7,9 @@ import { useHistory } from '../../context/HistoryContext';
 import RecentActivity from '../common/RecentActivity';
 import './tools.css';
 
-import PosterOverlay, { getAccentColor } from './PosterOverlay';
+import PosterCompositor from './poster-templates/PosterCompositor';
+import { getNextDesign } from './poster-templates/autoDesigner';
+import { normalizeFormData } from './poster-templates/normalizeFormData';
 
 const TEMPLATES = {
     academic: {
@@ -79,65 +81,6 @@ const TEMPLATES = {
         ]
     }
 };
-
-// ─── Default fallback style when Gemini is unavailable ───────────────────────
-const buildFallbackStyle = (displayTitle, displayCategory) => {
-    const accent = getAccentColor(displayTitle, displayCategory);
-    return {
-        primaryColor: accent.primary,
-        secondaryColor: accent.secondary,
-        gradientStart: "#0A0A2E",
-        gradientEnd: "#1A1A4E",
-        accentColor: "#A78BFA",
-        textColor: "#FFFFFF",
-        titleFont: "Bebas Neue",
-        titleAlignment: "center",
-        titleVerticalZone: "middle",
-        titleSize: "massive",
-        letterSpacing: "4px",
-        titleStyle: "uppercase",
-        layoutPersonality: "bold",
-        infoStyle: "pills-row",
-        dividerStyle: "gradient-line",
-        descriptionStyle: "bold-centered",
-        logoLayout: "top-split"
-    };
-};
-
-// ─── Info pill shared styles ──────────────────────────────────────────────────
-const pillStyle = (primaryColor) => ({
-    flex: 1,
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    gap: '4px',
-    background: 'rgba(0,0,0,0.5)',
-    border: `1px solid ${primaryColor}40`,
-    backdropFilter: 'blur(10px)',
-    WebkitBackdropFilter: 'blur(10px)',
-    borderRadius: '14px',
-    padding: '10px 8px',
-    fontFamily: "'Inter', sans-serif",
-    fontWeight: 600,
-    fontSize: 'clamp(0.7rem, 1.5vw, 0.85rem)',
-    color: '#fff'
-});
-
-const stackedItemStyle = (primaryColor) => ({
-    display: 'flex',
-    alignItems: 'center',
-    gap: '10px',
-    background: 'rgba(0,0,0,0.4)',
-    backdropFilter: 'blur(8px)',
-    WebkitBackdropFilter: 'blur(8px)',
-    borderLeft: `3px solid ${primaryColor}`,
-    borderRadius: '0 10px 10px 0',
-    padding: '6px 14px',
-    fontFamily: "'Inter', sans-serif",
-    fontWeight: 600,
-    fontSize: '0.85rem',
-    color: '#fff'
-});
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 const PosterGenerator = () => {
@@ -229,14 +172,9 @@ const PosterGenerator = () => {
             const imageUrl = data.data.image.url;
             setGeneratedImage(imageUrl);
 
-            // ── FIX: set posterStyle from Gemini response or fall back ──
-            if (data.data?.style) {
-                setPosterStyle(data.data.style);
-            } else {
-                const title = formData.eventTitle || formData.eventName ||
-                    formData.announcementTitle || formData.recruitmentTitle || '';
-                setPosterStyle(buildFallbackStyle(title, selectedTemplate));
-            }
+            // Apply new poster-templates design
+            const design = getNextDesign(selectedTemplate, { hasSpeakerPhoto: !!formData.speakerPhoto });
+            setPosterStyle(design);
 
             toast.success(data.message || "Poster generated successfully!");
         } catch (err) {
@@ -359,17 +297,6 @@ const PosterGenerator = () => {
         );
     };
 
-    // ── Derived display values ────────────────────────────────────────────────
-    const displayCategory = selectedTemplate || '';
-    const displayTitle = formData.eventTitle || formData.eventName || formData.announcementTitle || formData.recruitmentTitle || '';
-    const displayDate = formData.date || formData.dateDuration || formData.deadline || formData.importantDates || '';
-    const displayTime = formData.time || '';
-    const displayVenue = formData.venue || formData.venueMode || '';
-    const displayDescription = formData.description || formData.details || formData.highlights || formData.tagline || '';
-    const displayOrganizer = formData.department || formData.teamName || formData.organizer || formData.issuedBy || '';
-
-
-
     // ─────────────────────────────────────────────────────────────────────────
     return (
         <div className="tool-page">
@@ -462,17 +389,19 @@ const PosterGenerator = () => {
                             {/* ── Poster Preview ── */}
                             {!isGenerating && generatedImage && posterStyle && (
                                 <>
-                                    <PosterOverlay
-                                        generatedImage={generatedImage}
-                                        posterStyle={posterStyle}
-                                        formData={formData}
-                                        displayOrganizer={displayOrganizer}
-                                        displayTitle={displayTitle}
-                                        displayDescription={displayDescription}
-                                        displayDate={displayDate}
-                                        displayTime={displayTime}
-                                        displayVenue={displayVenue}
-                                    />
+                                    <div style={{ display: 'flex', justifyContent: 'center', width: '100%', overflow: 'auto', borderRadius: '12px', paddingBottom: '10px' }}>
+                                        <div style={{ flexShrink: 0, width: '600px' }}>
+                                            <PosterCompositor
+                                                skeletonId={posterStyle.skeleton}
+                                                backgroundId={posterStyle.background}
+                                                frameId={posterStyle.frame}
+                                                decorationId={posterStyle.decoration}
+                                                paletteId={posterStyle.paletteId}
+                                                data={normalizeFormData(selectedTemplate, formData)}
+                                                aiBackgroundImage={generatedImage}
+                                            />
+                                        </div>
+                                    </div>
 
                                     {/* Action buttons below poster */}
                                     <div className="tool-actions" style={{ marginTop: '1rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>

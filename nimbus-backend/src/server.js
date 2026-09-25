@@ -15,7 +15,7 @@ connectDB();
 
 // Middleware
 app.use(cors({
-    origin: ["http://localhost:3000", "http://localhost:3001"],
+    origin: ["http://localhost:3000", "http://localhost:3001", "http://localhost:3005"],
     credentials: true
 }));
 // Increased limit to handle large base64 encoded poster images (~1-2MB each)
