@@ -1,5 +1,6 @@
 import { User } from "../models/User.js";
 import { OtpToken } from "../models/OtpToken.js";
+import bcrypt from "bcryptjs";
 import { generateTokens, verifyRefreshToken, decodeToken } from "../utils/jwt.js";
 import { sendEmail } from "../services/email.service.js";
 import {
@@ -54,7 +55,8 @@ export const signupController = async (req, res) => {
 
         if (await User.findOne({ email: email.toLowerCase() })) return res.status(409).json({ error: "Email already registered" });
 
-        const result = await sendOtpHelper(email, name, 'signup', { name, password, role: role || "Society Member" });
+        const passwordHash = await bcrypt.hash(password, 10);
+        const result = await sendOtpHelper(email, name, 'signup', { name, password: passwordHash, role: role || "Society Member" });
         res.status(200).json({ message: "OTP sent successfully", ...result });
     } catch (error) {
         res.status(500).json({ error: error.message });
