@@ -114,7 +114,7 @@ const PosterOverlay = ({ generatedImage, posterStyle, formData, displayOrganizer
                         top: 0,
                         left: 0,
                         zIndex: 0,
-                        opacity: 0.7
+                        opacity: 0.92
                     }}
                 />
 
@@ -122,7 +122,7 @@ const PosterOverlay = ({ generatedImage, posterStyle, formData, displayOrganizer
                 <div style={{
                     position: 'absolute',
                     top: 0, left: 0, right: 0, bottom: 0,
-                    background: 'rgba(0,0,0,0.6)',
+                    background: 'linear-gradient(180deg, rgba(5,12,28,0.58) 0%, rgba(5,12,28,0.22) 38%, rgba(5,12,28,0.72) 100%)',
                     zIndex: 1
                 }}></div>
 
@@ -206,15 +206,18 @@ const PosterOverlay = ({ generatedImage, posterStyle, formData, displayOrganizer
                             fontFamily: `"${posterStyle.titleFont}", sans-serif`,
                             fontSize: getTitleSize(posterStyle.titleSize, displayTitle.length),
                             fontWeight: 900,
-                            color: posterStyle.primaryColor,
+                            color: '#FFFFFF',
                             textTransform: posterStyle.titleStyle,
                             letterSpacing: posterStyle.letterSpacing,
-                            lineHeight: 0.9,
+                            lineHeight: 0.98,
                             margin: 0,
-                            maxWidth: '90%',
+                            maxWidth: '88%',
+                            padding: '0 4%',
+                            zIndex: 3,
                             wordBreak: 'break-word',
                             textAlign: posterStyle.titleAlignment,
-                            textShadow: `0 0 40px ${posterStyle.primaryColor}90, 0 0 80px ${posterStyle.primaryColor}40, 0 4px 8px rgba(0,0,0,0.9)`
+                            textShadow: '0 3px 0 rgba(0,0,0,0.35), 0 6px 18px rgba(0,0,0,0.9)',
+                            WebkitTextStroke: '0.5px rgba(0,0,0,0.35)'
                         }}>
                             {displayTitle}
                         </h1>
@@ -259,7 +262,11 @@ const PosterOverlay = ({ generatedImage, posterStyle, formData, displayOrganizer
                                 left: '5%',
                                 borderLeft: `3px solid ${posterStyle.primaryColor}`,
                                 paddingLeft: '12px',
-                                color: 'rgba(255,255,255,0.9)'
+                            color: '#FFFFFF',
+                            background: 'rgba(4,10,24,0.58)',
+                            borderRadius: '12px',
+                            padding: '10px 14px',
+                            backdropFilter: 'blur(8px)'
                             } : {
                                 fontWeight: 400,
                                 fontStyle: 'italic',
@@ -289,7 +296,12 @@ const PosterOverlay = ({ generatedImage, posterStyle, formData, displayOrganizer
                             fontSize: 'clamp(0.7rem, 1.5vw, 0.85rem)',
                             color: 'rgba(255,255,255,0.9)',
                             textAlign: posterStyle.titleAlignment === 'center' ? 'center' : 'left',
-                            textShadow: '0 2px 4px rgba(0,0,0,0.8)'
+                            textShadow: '0 2px 6px rgba(0,0,0,0.9)',
+                            background: 'rgba(4,10,24,0.5)',
+                            borderRadius: '12px',
+                            padding: '10px 14px',
+                            boxSizing: 'border-box',
+                            backdropFilter: 'blur(8px)'
                         }}>
                             {displayBenefits && (
                                 <div><span style={{ color: posterStyle.primaryColor, fontWeight: 700 }}>✨ Highlights:</span> {displayBenefits}</div>

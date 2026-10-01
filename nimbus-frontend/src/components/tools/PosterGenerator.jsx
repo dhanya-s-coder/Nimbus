@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import html2canvas from 'html2canvas';
 import { useLocation } from 'react-router-dom';
 import { fetchWithAuth, API_ENDPOINTS } from '../../api/config';
 import { toast } from '../../utils/toast';
@@ -8,7 +9,7 @@ import RecentActivity from '../common/RecentActivity';
 import './tools.css';
 
 import PosterCompositor from './poster-templates/PosterCompositor';
-import { getNextDesign } from './poster-templates/autoDesigner';
+import { getDesignByIndex, getDesignCandidates, getDesignCount } from './poster-templates/autoDesigner';
 import { normalizeFormData } from './poster-templates/normalizeFormData';
 
 const TEMPLATES = {
@@ -16,6 +17,8 @@ const TEMPLATES = {
         name: 'Academic / Seminar',
         fields: [
             { id: 'eventLogo', label: 'Event Logo (Optional)', type: 'file' },
+            { id: 'speakerPhoto', label: 'Speaker Photo (Optional)', type: 'file' },
+            { id: 'qr1Image', label: 'Registration QR (Optional)', type: 'file' },
             { id: 'eventTitle', label: 'Event Title', type: 'text', required: true, placeholder: 'e.g., Research Symposium 2024' },
             { id: 'speakerName', label: 'Speaker Name', type: 'text', placeholder: 'e.g., Dr. John Smith' },
             { id: 'speakerDesignation', label: 'Speaker Designation', type: 'text', placeholder: 'e.g., Professor of Computer Science' },
@@ -23,16 +26,20 @@ const TEMPLATES = {
             { id: 'date', label: 'Date', type: 'text', placeholder: 'e.g., January 15, 2025' },
             { id: 'time', label: 'Time', type: 'text', placeholder: 'e.g., 10:00 AM - 12:00 PM' },
             { id: 'venue', label: 'Venue', type: 'text', placeholder: 'e.g., Seminar Hall A' },
-            { id: 'description', label: 'Short Description', type: 'textarea', placeholder: 'Brief description of the event...' }
+            { id: 'description', label: 'Subheading', type: 'textarea', placeholder: 'Short subheading...' },
+            { id: 'subdescription', label: 'Description', type: 'textarea', placeholder: 'Enter the full description...' },
+            { id: 'colorPreference', label: 'Color Preference', type: 'select', options: ['Vibrant', 'Cool Blues', 'Warm Oranges', 'Modern Purple'] }
         ]
     },
     recruitment: {
         name: 'Recruitment',
         fields: [
             { id: 'eventLogo', label: 'Event Logo (Optional)', type: 'file' },
+            { id: 'qr1Image', label: 'Registration QR (Optional)', type: 'file' },
             { id: 'recruitmentTitle', label: 'Recruitment Title', type: 'text', required: true, placeholder: 'e.g., Join Our Team!' },
             { id: 'teamName', label: 'Team / Organization Name', type: 'text', placeholder: 'e.g., Nimbus Tech Club' },
-            { id: 'description', label: 'Description', type: 'textarea', placeholder: 'What the role entails...' },
+            { id: 'description', label: 'Subheading', type: 'textarea', placeholder: 'Short subheading...' },
+            { id: 'subdescription', label: 'Description', type: 'textarea', placeholder: 'Enter the full description...' },
             { id: 'eligibility', label: 'Eligibility / Who Can Apply', type: 'textarea', placeholder: 'e.g., 2nd year students and above' },
             { id: 'benefits', label: 'Benefits / Highlights', type: 'textarea', placeholder: 'e.g., Mentorship, networking, certificates' },
             { id: 'deadline', label: 'Date / Deadline', type: 'text', placeholder: 'e.g., Apply by January 20, 2025' },
@@ -45,13 +52,15 @@ const TEMPLATES = {
             { id: 'eventLogo', label: 'Event Logo (Optional)', type: 'file' },
             { id: 'eventName', label: 'Event Name', type: 'text', required: true, placeholder: 'e.g., TechFest 2025' },
             { id: 'tagline', label: 'Tagline', type: 'text', placeholder: 'e.g., Innovate. Create. Celebrate.' },
-            { id: 'description', label: 'Event Description', type: 'textarea', placeholder: 'What the event is about...' },
+            { id: 'description', label: 'Subheading', type: 'textarea', placeholder: 'Short subheading...' },
+            { id: 'subdescription', label: 'Description', type: 'textarea', placeholder: 'Enter the full description...' },
             { id: 'date', label: 'Date', type: 'text', placeholder: 'e.g., March 15-17, 2025' },
             { id: 'time', label: 'Time', type: 'text', placeholder: 'e.g., 9:00 AM onwards' },
             { id: 'venue', label: 'Venue', type: 'text', placeholder: 'e.g., Main Auditorium' },
             { id: 'organizer', label: 'Organizer / Club Name', type: 'text', placeholder: 'e.g., Society Council' },
             { id: 'highlights', label: 'Highlights', type: 'textarea', placeholder: 'e.g., Live performances, workshops, prizes' },
-            { id: 'theme', label: 'Theme / Mood', type: 'select', options: ['Energetic', 'Fun', 'Cultural', 'Professional'] },
+            { id: 'prizes', label: 'Prizes / Awards (Optional)', type: 'textarea', placeholder: 'e.g., Winner: ₹10,000, certificates' },
+            { id: 'qr1Image', label: 'Registration QR (Optional)', type: 'file' },
             { id: 'colorPreference', label: 'Color Preference', type: 'select', options: ['Vibrant', 'Cool Blues', 'Warm Oranges', 'Modern Purple'] }
         ]
     },
@@ -59,10 +68,12 @@ const TEMPLATES = {
         name: 'Hackathon / Tech',
         fields: [
             { id: 'eventLogo', label: 'Event Logo (Optional)', type: 'file' },
+            { id: 'qr1Image', label: 'Registration QR (Optional)', type: 'file' },
             { id: 'eventName', label: 'Event Name', type: 'text', required: true, placeholder: 'e.g., CodeSprint 2025' },
             { id: 'hackathonTheme', label: 'Hackathon Theme', type: 'text', placeholder: 'e.g., AI for Social Good' },
-            { id: 'description', label: 'Description', type: 'textarea', placeholder: 'What participants will build...' },
-            { id: 'dateDuration', label: 'Date & Duration', type: 'text', placeholder: 'e.g., Feb 10-12, 48 hours' },
+            { id: 'duration', label: 'Duration (Optional)', type: 'text', placeholder: 'e.g., 48 Hours' },
+            { id: 'subdescription', label: 'Description', type: 'textarea', placeholder: 'Enter the full description...' },
+            { id: 'dateDuration', label: 'Date', type: 'text', placeholder: 'e.g., Feb 10-12' },
             { id: 'venueMode', label: 'Venue / Mode', type: 'select', options: ['Online', 'Offline', 'Hybrid'] },
             { id: 'organizer', label: 'Organizer', type: 'text', placeholder: 'e.g., Nimbus Tech Club' },
             { id: 'prizes', label: 'Rewards / Prizes', type: 'textarea', placeholder: 'e.g., ₹50,000 prize pool, internships' },
@@ -74,7 +85,8 @@ const TEMPLATES = {
         fields: [
             { id: 'eventLogo', label: 'Event Logo (Optional)', type: 'file' },
             { id: 'announcementTitle', label: 'Announcement Title', type: 'text', required: true, placeholder: 'e.g., Campus Closure Notice' },
-            { id: 'details', label: 'Announcement Details', type: 'textarea', placeholder: 'Full details of the announcement...' },
+            { id: 'details', label: 'Subheading', type: 'textarea', placeholder: 'Short subheading...' },
+            { id: 'subdescription', label: 'Description', type: 'textarea', placeholder: 'Enter the full description...' },
             { id: 'applicableTo', label: 'Applicable To', type: 'text', placeholder: 'e.g., All students and faculty' },
             { id: 'importantDates', label: 'Important Dates', type: 'text', placeholder: 'e.g., Effective from Jan 1, 2025' },
             { id: 'issuedBy', label: 'Issued By', type: 'text', placeholder: 'e.g., Office of Administration' }
@@ -98,13 +110,44 @@ const PosterGenerator = () => {
 
     useEffect(() => {
         if (location.state?.posterData) {
-            const { templateType, formData: savedFormData, generatedImageUrl } = location.state.posterData;
+            const { templateType, formData: savedFormData, generatedImageUrl, posterStyle: savedStyle } = location.state.posterData;
             if (templateType) setSelectedTemplate(templateType);
             if (savedFormData) setFormData(savedFormData);
-            if (generatedImageUrl) setGeneratedImage(generatedImageUrl);
+            if (generatedImageUrl) {
+                setGeneratedImage(generatedImageUrl);
+                // Saved posters may not contain the newer style metadata.
+                setPosterStyle(savedStyle || getDesignByIndex(templateType || 'academic', 0, {
+                    colorPreference: savedFormData?.colorPreference,
+                }));
+            }
             toast.success("Poster loaded successfully");
+        } else {
+            try {
+                const saved = JSON.parse(localStorage.getItem('nimbus-last-poster') || 'null');
+                if (saved?.generatedImage) {
+                    setSelectedTemplate(saved.selectedTemplate || 'academic');
+                    // Do not resurrect QR assets from an old local preview.
+                    const restoredForm = { ...(saved.formData || {}) };
+                    // Uploaded assets are local preview state. Never revive an old
+                    // speaker/event image when starting from the last poster.
+                    delete restoredForm.speakerPhoto;
+                    delete restoredForm.eventLogo;
+                    delete restoredForm.qr1Image;
+                    delete restoredForm.qr2Image;
+                    delete restoredForm.registrationUrl;
+                    setFormData(restoredForm);
+                    setGeneratedImage(saved.generatedImage);
+                    setPosterStyle(saved.posterStyle || getDesignByIndex(saved.selectedTemplate || 'academic', 0));
+                }
+            } catch { /* ignore stale local preview */ }
         }
     }, [location.state]);
+
+    useEffect(() => {
+        if (generatedImage && posterStyle) {
+            localStorage.setItem('nimbus-last-poster', JSON.stringify({ selectedTemplate, formData, generatedImage, posterStyle }));
+        }
+    }, [generatedImage, posterStyle, selectedTemplate, formData]);
 
     const currentTemplate = TEMPLATES[selectedTemplate];
 
@@ -142,7 +185,8 @@ const PosterGenerator = () => {
                 method: 'POST',
                 body: JSON.stringify({
                     templateType: selectedTemplate,
-                    formData
+                    formData,
+                    availableDesigns: getDesignCandidates(selectedTemplate)
                 })
             });
 
@@ -173,7 +217,14 @@ const PosterGenerator = () => {
             setGeneratedImage(imageUrl);
 
             // Apply new poster-templates design
-            const design = getNextDesign(selectedTemplate, { hasSpeakerPhoto: !!formData.speakerPhoto });
+            const rotationKey = `nimbus-design-rotation-${selectedTemplate}`;
+            const rotation = Number(localStorage.getItem(rotationKey) || 0);
+            localStorage.setItem(rotationKey, String(rotation + 1));
+            // Rotate locally on every regeneration so the visual layout changes predictably.
+            const selectedIndex = rotation % getDesignCount(selectedTemplate);
+            const design = getDesignByIndex(selectedTemplate, selectedIndex, {
+                colorPreference: formData.colorPreference,
+            });
             setPosterStyle(design);
 
             toast.success(data.message || "Poster generated successfully!");
@@ -205,6 +256,7 @@ const PosterGenerator = () => {
                     formData,
                     status,
                     generatedImageUrl: generatedImage
+                    ,posterStyle
                 })
             });
             const data = await response.json();
@@ -221,16 +273,32 @@ const PosterGenerator = () => {
         }
     };
 
-    const handleDownload = () => {
+    const handleDownload = async () => {
         if (!generatedImage) {
             toast.info("Please generate a poster first to download it.");
             return;
         }
-        const downloadUrl = generatedImage.includes('cloudinary.com')
-            ? generatedImage.replace('/upload/', '/upload/fl_attachment/')
-            : generatedImage;
+        const node = document.getElementById('poster-export-node');
+        if (!node) return;
+        if (document.fonts?.ready) await document.fonts.ready;
+        const images = Array.from(node.querySelectorAll('img'));
+        await Promise.all(images.map((img) => {
+            if (img.complete) return img.decode?.().catch(() => {}) || Promise.resolve();
+            return new Promise((resolve) => {
+                img.addEventListener('load', resolve, { once: true });
+                img.addEventListener('error', resolve, { once: true });
+            });
+        }));
+        const canvas = await html2canvas(node, {
+            scale: 3,
+            useCORS: true,
+            allowTaint: false,
+            backgroundColor: null,
+            logging: false,
+        });
+        const dataUrl = canvas.toDataURL('image/png');
         const a = document.createElement('a');
-        a.href = downloadUrl;
+        a.href = dataUrl;
         const posterTitle = formData.eventTitle || formData.eventName ||
             formData.announcementTitle || formData.recruitmentTitle || 'Untitled Poster';
         a.download = `Poster: ${posterTitle} (By Nimbus).png`;

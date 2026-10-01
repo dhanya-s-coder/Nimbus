@@ -6,12 +6,14 @@ import SkeletonSplitPanel from './skeletons/SkeletonSplitPanel';
 import SkeletonEditorial from './skeletons/SkeletonEditorial';
 import SkeletonAsymmetric from './skeletons/SkeletonAsymmetric';
 import SkeletonFramedClassic from './skeletons/SkeletonFramedClassic';
+import SkeletonEventCards from './skeletons/SkeletonEventCards';
 
 import { getBackground } from './skins/backgrounds';
 import { getFrame } from './skins/frames';
 import { getDecoration } from './skins/decorations';
 import { getPalette, isDarkPalette } from './skins/palettes';
 import { SKELETON_SAFE_ZONES } from './safeZones';
+import OverlayElements from './OverlayElements';
 
 const SKELETONS = {
     'centered': SkeletonCentered,
@@ -20,6 +22,7 @@ const SKELETONS = {
     'editorial': SkeletonEditorial,
     'asymmetric': SkeletonAsymmetric,
     'framed-classic': SkeletonFramedClassic,
+    'event-cards': SkeletonEventCards,
 };
 
 /**
@@ -42,6 +45,16 @@ const PosterCompositor = ({
     aiElements = [],
 }) => {
     const palette = getPalette(paletteId);
+    const bgHex = String(palette.bg || '#111827').replace('#', '').slice(0, 6);
+    const rgb = bgHex.length === 6 ? [0, 2, 4].map(i => parseInt(bgHex.slice(i, i + 2), 16)) : [17, 24, 39];
+    const bgLuma = (0.2126 * rgb[0] + 0.7152 * rgb[1] + 0.0722 * rgb[2]) / 255;
+    const backgroundIsDark = bgLuma < 0.65;
+    const contentPalette = {
+        ...palette,
+        text: backgroundIsDark ? '#FFFFFF' : '#111827',
+        muted: backgroundIsDark ? 'rgba(255,255,255,0.86)' : 'rgba(17,24,39,0.78)',
+        accent: palette.accent || '#FFFFFF',
+    };
     const SkeletonComponent = SKELETONS[skeletonId] || SkeletonCentered;
     const Background = getBackground(backgroundId).component;
     const Frame = getFrame(frameId).component;
@@ -61,6 +74,8 @@ const PosterCompositor = ({
             style={{
                 width: '600px',
                 height: '750px',
+                // Instagram portrait format: 4:5 (1080 × 1350 when exported)
+                aspectRatio: '4 / 5',
                 position: 'relative',
                 overflow: 'hidden',
                 backgroundColor: palette.bg,
@@ -77,7 +92,12 @@ const PosterCompositor = ({
                 />
             )}
 
-            <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', zIndex: 2, pointerEvents: 'none', mixBlendMode: 'overlay', opacity: 0.08 }}>
+            <div style={{
+                position: 'absolute', inset: 0, zIndex: 4, pointerEvents: 'none',
+                background: 'linear-gradient(180deg, rgba(4,10,24,0.28) 0%, rgba(4,10,24,0.08) 34%, rgba(4,10,24,0.56) 100%)'
+            }} />
+
+            <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', zIndex: 2, pointerEvents: 'none', opacity: 0.08 }}>
                 <filter id="poster-live-grain">
                     <feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="4" stitchTiles="stitch" />
                     <feColorMatrix type="saturate" values="0" />
@@ -99,8 +119,9 @@ const PosterCompositor = ({
                 />
             ))}
 
-            <SkeletonComponent data={data} palette={palette} />
-            <Frame palette={palette} />
+            <SkeletonComponent data={data} palette={contentPalette} />
+            <OverlayElements data={data} palette={contentPalette} decorationId={decorationId} />
+            <Frame palette={contentPalette} />
         </div>
     );
 };
@@ -136,7 +157,7 @@ const AIElement = ({ src, position, opacity, role, palette, dark }) => {
             maskImage: mask,
             WebkitMaskSize: '100% 100%',
             maskSize: '100% 100%',
-            mixBlendMode: isPanel ? 'normal' : (dark ? 'screen' : 'multiply'),
+            mixBlendMode: 'normal',
         }}>
             <img
                 src={src}
@@ -150,7 +171,6 @@ const AIElement = ({ src, position, opacity, role, palette, dark }) => {
                         ? `saturate(1.05) contrast(1.04)`
                         : `saturate(1.1) contrast(1.05) drop-shadow(0 12px 28px ${palette.primary}55)`,
                 }}
-                crossOrigin="anonymous"
                 onLoad={() => setLoaded(true)}
                 onError={() => setError(true)}
             />
@@ -203,7 +223,9 @@ const AILoadingBackground = ({ src, palette, overlayOpacity }) => {
                     position: 'absolute',
                     inset: 0,
                     mixBlendMode: 'multiply',
-                    opacity: 0.30,
+                    // html-to-image can flatten mix-blend-mode differently than
+                    // the browser preview; disable this tint to keep exports matched.
+                    opacity: 0,
                     background: palette.bg,
                 }} />
             )}
@@ -212,15 +234,17 @@ const AILoadingBackground = ({ src, palette, overlayOpacity }) => {
             <div style={{
                 position: 'absolute',
                 inset: 0,
-                background: `radial-gradient(ellipse 75% 70% at 50% 40%, transparent 0%, ${palette.bg}00 45%, ${palette.bg} 100%)`,
-                opacity: light ? 0.7 : 0.85,
+                background: 'radial-gradient(ellipse 75% 70% at 50% 40%, transparent 0%, transparent 45%, rgba(0,0,0,0.32) 100%)',
+                opacity: light ? 0.16 : 0.38,
             }} />
 
             {/* Top/Bottom vignette — critical for title and footer readability */}
             <div style={{
                 position: 'absolute',
                 inset: 0,
-                background: `linear-gradient(180deg, ${palette.bg}E6 0%, ${palette.bg}80 12%, transparent 28%, transparent 75%, ${palette.bg}99 88%, ${palette.bg}E6 100%)`,
+                background: light
+                    ? 'linear-gradient(180deg, rgba(0,0,0,0.22) 0%, rgba(0,0,0,0.08) 12%, transparent 28%, transparent 75%, rgba(0,0,0,0.12) 88%, rgba(0,0,0,0.22) 100%)'
+                    : 'linear-gradient(180deg, rgba(0,0,0,0.48) 0%, rgba(0,0,0,0.20) 12%, transparent 28%, transparent 75%, rgba(0,0,0,0.28) 88%, rgba(0,0,0,0.48) 100%)',
             }} />
         </div>
     );

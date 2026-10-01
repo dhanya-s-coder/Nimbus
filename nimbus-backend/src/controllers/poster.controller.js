@@ -1,9 +1,10 @@
 import { HfInference } from "@huggingface/inference";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import { User } from "../models/User.js";
 import { savePosterDraft, getActivityByUserAndType, deleteActivity } from "../services/history.service.js";
 import { uploadBufferToCloudinary } from "../utils/cloudinaryHelper.js";
 
-const buildBackgroundPrompt = (eventName = "", category = "", theme = "") => {
+const buildBackgroundPrompt = (eventName = "", category = "", theme = "", colorPreference = "") => {
     const n = (eventName + " " + category + " " + theme).toLowerCase();
 
     let stylePrompt = "";
@@ -17,9 +18,14 @@ const buildBackgroundPrompt = (eventName = "", category = "", theme = "") => {
 
     else if (n.includes("recruit") || n.includes("career") || n.includes("job")
         || n.includes("hiring") || n.includes("placement"))
-        stylePrompt = `sleek corporate abstract background, deep navy blue 
-    and gold gradient, geometric diamond shapes, professional luxury, 
-    soft bokeh lights, modern minimalist architecture, premium feel, 4k`;
+        stylePrompt = `modern university student recruitment campaign background,
+    welcoming campus atmosphere, clean editorial composition, navy blue with
+    fresh mint and white accents, subtle abstract network lines and soft
+    translucent shapes, youthful academic society mood, polished Canva-style
+    visual design, gentle depth and soft light, premium but approachable,
+    balanced negative space with a clear text-safe area on the upper-left and
+    a separate quiet panel area near the lower third, no dominant centerpiece,
+    no harsh metallic geometry, no busy focal object, high quality 4k`;
 
     else if (n.includes("cultural") || n.includes("fest") || n.includes("music")
         || n.includes("dance") || n.includes("art") || n.includes("drama"))
@@ -50,7 +56,8 @@ const buildBackgroundPrompt = (eventName = "", category = "", theme = "") => {
     blue and royal purple, smooth flowing light shapes, modern premium, 
     subtle geometric patterns, sophisticated, 4k`;
 
-    return `${stylePrompt}, 
+    const colorHint = colorPreference ? `, consistent ${colorPreference} color palette` : '';
+    return `${stylePrompt}${colorHint}, 
     poster background template only, 
     empty clean composition with space for text overlay,
     NO text, NO letters, NO words, NO typography, NO watermarks,
@@ -66,17 +73,39 @@ underexposed, bad composition, cluttered, messy`;
 
 // const hf = new InferenceClient(process.env.HF_API_KEY);
 const hf = new HfInference(process.env.HF_API_KEY);
+const gemini = process.env.GEMINI_API_KEY
+    ? new GoogleGenerativeAI(process.env.GEMINI_API_KEY).getGenerativeModel({ model: "gemini-2.5-flash" })
+    : null;
+
+const choosePosterDesign = async (formData, templateType, candidates = []) => {
+    if (!gemini || !Array.isArray(candidates) || candidates.length === 0) return 0;
+    const prompt = `Choose the best poster design from the supplied hardcoded candidates. Return ONLY valid JSON: {"index": number}. Never invent an index.
+User poster data: ${JSON.stringify(formData || {})}
+Template type: ${templateType || 'event'}
+Candidates: ${JSON.stringify(candidates)}`;
+    try {
+        const result = await gemini.generateContent(prompt);
+        const text = result.response.text().replace(/```json|```/g, '').trim();
+        const parsed = JSON.parse(text);
+        const index = Number(parsed.index);
+        return Number.isInteger(index) && index >= 0 && index < candidates.length ? index : 0;
+    } catch (error) {
+        console.warn("⚠️ Gemini design selection failed; rotating fallback:", error.message);
+        return candidates.length > 1 ? Math.floor(Math.random() * candidates.length) : 0;
+    }
+};
 
 export const generatePosterController = async (req, res) => {
     try {
-        const { eventName, category, theme, formData } = req.body;
+        const { eventName, category, theme, formData, templateType, availableDesigns } = req.body;
 
         const finalEventName = eventName || (formData && formData.eventName) || "";
         const finalCategory = category || (formData && formData.eventType) || (formData && formData.category) || (req.body.templateType) || "";
         const finalTheme = theme || (formData && formData.theme) || "";
 
-        const generatedPrompt = buildBackgroundPrompt(finalEventName, finalCategory, finalTheme);
+        const generatedPrompt = buildBackgroundPrompt(finalEventName, finalCategory, finalTheme, formData?.colorPreference);
         console.log("🎨 Generated SDXL Prompt:", generatedPrompt);
+        const designIndex = await choosePosterDesign(formData, templateType, availableDesigns);
 
         const imageBlob = await hf.textToImage({
             model: "stabilityai/stable-diffusion-xl-base-1.0",
@@ -104,7 +133,8 @@ export const generatePosterController = async (req, res) => {
                 image: {
                     mimeType: imageBlob.type || "image/jpeg",
                     url: cloudinaryUrl
-                }
+                },
+                designIndex
             }
         });
     } catch (error) {
@@ -115,15 +145,24 @@ export const generatePosterController = async (req, res) => {
 
 export const savePosterController = async (req, res) => {
     try {
-        const { templateType, formData, generatedImageUrl, status } = req.body;
+        const { templateType, formData, generatedImageUrl, posterStyle, status } = req.body;
         const userId = req.user?.userId;
 
         if (!userId) return res.status(401).json({ success: false, message: "Unauthorized" });
 
+        const storedFormData = { ...(formData || {}) };
+        for (const key of ['speakerPhoto', 'eventLogo', 'collegeLogo', 'qr1Image', 'qr2Image']) {
+            const value = storedFormData[key];
+            if (typeof value === 'string' && value.startsWith('data:')) {
+                const match = value.match(/^data:[^;]+;base64,(.*)$/);
+                if (match) storedFormData[key] = await uploadBufferToCloudinary(Buffer.from(match[1], 'base64'), 'nimbus/poster-assets');
+            }
+        }
         const draft = await savePosterDraft(userId, {
             templateType,
-            formData,
+            formData: storedFormData,
             generatedImageUrl: generatedImageUrl || null,
+            posterStyle: posterStyle || null,
             status: status || 'draft'
         });
 

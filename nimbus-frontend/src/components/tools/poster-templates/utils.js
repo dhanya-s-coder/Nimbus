@@ -1,3 +1,5 @@
+import React, { useState } from 'react';
+
 /**
  * Shared utilities for the poster template engine.
  *
@@ -77,24 +79,35 @@ const logoImgStyle = (h = '40px', extra = {}) => ({
  * @param {object} logoStyle - Extra styles applied to each img
  * @param {object} containerStyle - Extra styles for the container div
  */
-export const renderLogos = (collegeLogo, eventBrandLogo, logoStyle = {}, containerStyle = {}) => (
-    <div style={{
+const RenderLogos = ({ collegeLogo, eventBrandLogo, logoStyle = {}, containerStyle = {} }) => {
+    const [position, setPosition] = useState(() => localStorage.getItem('nimbus-logo-position') || 'left');
+    const [hover, setHover] = useState(false);
+    return <div onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)} style={{
         display: 'flex',
-        justifyContent: 'space-between',
+        justifyContent: position === 'right' ? 'flex-end' : 'flex-start',
         alignItems: 'center',
         width: '100%',
         ...containerStyle,
+        transition: 'all .2s ease',
+        '--logo-position': position,
+        zIndex: 9999,
     }}>
+        <div className="logo-position-picker" onMouseEnter={() => setHover(true)} style={{ position: 'absolute', top: '2px', left: '50%', transform: 'translateX(-50%)', display: hover ? 'flex' : 'none', gap: 4, zIndex: 30, padding: 3, borderRadius: 6, background: 'rgba(8,15,35,.92)', boxShadow: '0 3px 12px #0007' }}>
+            <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => { localStorage.setItem('nimbus-logo-position', 'left'); setPosition('left'); }} style={{ cursor: 'pointer', fontSize: 9, fontWeight: 700, padding: '3px 7px', border: 0, borderRadius: 4, background: position === 'left' ? '#fff' : '#334155', color: position === 'left' ? '#111827' : '#fff' }}>← Left</button>
+            <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => { localStorage.setItem('nimbus-logo-position', 'right'); setPosition('right'); }} style={{ cursor: 'pointer', fontSize: 9, fontWeight: 700, padding: '3px 7px', border: 0, borderRadius: 4, background: position === 'right' ? '#fff' : '#334155', color: position === 'right' ? '#111827' : '#fff' }}>Right →</button>
+        </div>
         {/* Left group: CSES + optional college logo */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div style={{ display: 'flex', alignItems: 'center' }}>
             {/* CSES logo with always-visible contrast pill */}
             <div style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                background: 'rgba(255,255,255,0.12)',
-                borderRadius: '8px',
-                padding: '4px 8px',
+                background: 'transparent',
+                borderRadius: '0',
+                padding: '0',
+                marginRight: '-30px',
+                marginLeft: '-50px',
                 backdropFilter: 'blur(4px)',
-                border: '1px solid rgba(255,255,255,0.18)',
+                border: '0',
             }}>
                 <img
                     src="/assets/cses-logo.png"
@@ -151,7 +164,11 @@ export const renderLogos = (collegeLogo, eventBrandLogo, logoStyle = {}, contain
                 />
             </div>
         )}
-    </div>
+    </div>;
+};
+
+export const renderLogos = (collegeLogo, eventBrandLogo, logoStyle = {}, containerStyle = {}) => (
+    <RenderLogos collegeLogo={collegeLogo} eventBrandLogo={eventBrandLogo} logoStyle={logoStyle} containerStyle={containerStyle} />
 );
 
 /**
@@ -162,7 +179,7 @@ export const renderLogos = (collegeLogo, eventBrandLogo, logoStyle = {}, contain
  * @param {object|null} qr2 - { image: base64, label: string }
  * @param {object} palette  - Poster palette for styling
  */
-export const renderQrCodes = (qr1, qr2, palette = {}) => {
+export const renderQrCodes = (qr1, qr2, palette = {}, placement = {}) => {
     if (!qr1 && !qr2) return null;
 
     const QrBlock = ({ qr }) => (
@@ -182,13 +199,13 @@ export const renderQrCodes = (qr1, qr2, palette = {}) => {
                 <img
                     src={qr.image}
                     alt="QR"
-                    style={{ width: '72px', height: '72px', objectFit: 'contain', display: 'block' }}
+                    style={{ width: '144px', height: '144px', objectFit: 'contain', display: 'block' }}
                     onError={(e) => { e.target.parentElement.style.display = 'none'; }}
                 />
             </div>
             {qr.label && (
                 <div style={{
-                    fontSize: '0.48rem',
+                    fontSize: '1rem',
                     fontWeight: 700,
                     color: palette.muted || palette.text || '#ccc',
                     textAlign: 'center',
@@ -203,12 +220,22 @@ export const renderQrCodes = (qr1, qr2, palette = {}) => {
 
     return (
         <div style={{
+            position: 'absolute',
+            right: '18px',
+            bottom: '16px',
+            zIndex: 50,
             display: 'flex',
             gap: '20px',
-            justifyContent: (qr1 && qr2) ? 'space-between' : 'center',
+            justifyContent: 'flex-end',
             alignItems: 'flex-end',
-            marginTop: '10px',
-            width: '100%',
+            transform: 'scale(0.5)',
+            transformOrigin: 'bottom right',
+            width: 'max-content',
+            ...placement,
+            ...(placement.scale ? {
+                transform: `scale(${placement.scale})`,
+                transformOrigin: placement.transformOrigin || 'bottom right',
+            } : {}),
         }}>
             {qr1 && <QrBlock qr={qr1} />}
             {qr2 && <QrBlock qr={qr2} />}
@@ -224,28 +251,128 @@ export const renderQrCodes = (qr1, qr2, palette = {}) => {
  * @param {object} palette - Poster palette
  * @param {number} size - Avatar size in px (default 70)
  */
-export const renderSpeakerAvatar = (speakerPhoto, palette = {}, size = 70) => {
-    if (!speakerPhoto) return null;
+const SpeakerAvatar = ({ speakerPhoto, palette = {}, size = 222 }) => {
+    const [shape, setShape] = useState(() => localStorage.getItem('nimbus-speaker-shape') || 'Circle');
+    const [hover, setHover] = useState(false);
+     if (!speakerPhoto || speakerPhoto === 'null' || speakerPhoto === 'undefined' || speakerPhoto === '') {
+        return null;
+    }
+    const clipPath = shape === 'Diamond' ? 'polygon(50% 0%,100% 50%,50% 100%,0% 50%)' : shape === 'Square' ? 'none' : shape === 'Hexagon' ? 'polygon(25% 6%,75% 6%,100% 50%,75% 94%,25% 94%,0% 50%)' : 'circle(50% at 50% 50%)';
     return (
-        <div style={{
+        <div onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)} style={{
+            position: 'relative',
+            zIndex: 20,
             width: `${size}px`,
             height: `${size}px`,
-            borderRadius: '50%',
-            overflow: 'hidden',
-            border: `2px solid ${palette.primary || '#fff'}60`,
-            boxShadow: `0 0 16px ${palette.primary || '#fff'}40`,
+            borderRadius: shape === 'Circle' ? '50%' : shape === 'Diamond' ? '0' : shape === 'Hexagon' ? '12%' : '0',
+            overflow: 'visible',
+            // A rectangular border/glow leaks behind Diamond/Hexagon. Their
+            // SVG guide below is the actual boundary, so only Circle/Square
+            // use the wrapper border and glow.
+            border: (shape === 'Circle' || shape === 'Square')
+                ? `2px solid ${palette.primary || '#fff'}60`
+                : '2px solid transparent',
+            boxShadow: (shape === 'Circle' || shape === 'Square')
+                ? `0 0 16px ${palette.primary || '#fff'}40`
+                : 'none',
             flexShrink: 0,
             lineHeight: 0,
         }}>
+            <div
+    aria-hidden="true"
+    style={{
+        position: 'absolute',
+                // Keep the guide exactly on the same bounds as the clipped photo.
+                inset: '-4px',
+        pointerEvents: 'none',
+        zIndex: 1,
+    }}
+>
+    {shape === 'Circle' ? (
+        <div
+            style={{
+                width: '100%',
+                height: '100%',
+                border: '2px dashed rgba(255,255,255,0.95)',
+                borderRadius: '50%',
+                boxSizing: 'border-box',
+            }}
+        />
+    ) : shape === 'Square' ? (
+        <div
+            style={{
+                width: '100%',
+                height: '100%',
+                border: '2px dashed rgba(255,255,255,0.95)',
+                boxSizing: 'border-box',
+            }}
+        />
+    ) : shape === 'Diamond' ? (
+        <svg
+            width="100%"
+            height="100%"
+            viewBox="0 0 100 100"
+            style={{
+                display: 'block',
+                overflow: 'visible',
+                filter: `drop-shadow(0 0 16px ${palette.primary || '#fff'}40)`,
+            }}
+        >
+            <polygon
+                points="50,0 100,50 50,100 0,50"
+                fill="none"
+                stroke="rgba(255,255,255,0.95)"
+                strokeWidth="2"
+                strokeDasharray="5 4"
+                vectorEffect="non-scaling-stroke"
+            />
+        </svg>
+    ) : (
+        <svg
+            width="100%"
+            height="100%"
+            viewBox="0 0 100 100"
+            style={{
+                display: 'block',
+                overflow: 'visible',
+                filter: `drop-shadow(0 0 16px ${palette.primary || '#fff'}40)`,
+            }}
+        >
+            <polygon
+                points="25,6 75,6 100,50 75,94 25,94 0,50"
+                fill="none"
+                stroke="rgba(255,255,255,0.95)"
+                strokeWidth="2"
+                strokeDasharray="5 4"
+                vectorEffect="non-scaling-stroke"
+            />
+        </svg>
+    )}
+</div>
+            {hover && <div style={{ position: 'absolute', top: 2, left: '50%', transform: 'translateX(-50%)', zIndex: 99999, display: 'flex', gap: 2, background: '#081126ee', padding: 3, borderRadius: 5 }}>{['Circle','Diamond','Square','Hexagon'].map(s => <button key={s} type="button" onClick={() => { localStorage.setItem('nimbus-speaker-shape', s); setShape(s); }} style={{ fontSize: 8, padding: '3px 5px' }}>{s}</button>)}</div>}
             <img
                 src={speakerPhoto}
                 alt="Speaker"
-                style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top center' }}
+                style={{
+                    width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top center',
+                    clipPath, borderRadius: shape === 'Circle' ? '50%' : 0,
+                    // For non-rectangular shapes the glow follows the clipped
+                    // pixels instead of producing a rectangular shadow.
+                    filter: (shape === 'Diamond' || shape === 'Hexagon')
+                        ? `drop-shadow(0 0 16px ${palette.primary || '#fff'}c0)`
+                        : 'none',
+                    position: 'relative',
+                    zIndex: 2,
+                }}
                 onError={(e) => { e.target.parentElement.style.display = 'none'; }}
             />
         </div>
     );
 };
+
+export const renderSpeakerAvatar = (speakerPhoto, palette = {}, size = 222) => (
+    <SpeakerAvatar speakerPhoto={speakerPhoto} palette={palette} size={size} />
+);
 
 // ─── Text Utilities ───────────────────────────────────────────────────────────
 export const truncate = (text, maxLen = 120) => {
@@ -260,3 +387,5 @@ export const splitToBullets = (text) => {
         .map(s => s.trim())
         .filter(s => s.length > 0);
 };
+
+

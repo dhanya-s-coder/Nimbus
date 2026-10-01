@@ -6,7 +6,7 @@ const abs = { position: 'absolute', inset: 0, pointerEvents: 'none' };
  * Gentle film grain — only applied at very low opacity.
  */
 const FilmGrain = ({ id, opacity = 0.05 }) => (
-    <svg style={{ ...abs, width: '100%', height: '100%', zIndex: 2, mixBlendMode: 'overlay' }}>
+    <svg style={{ ...abs, width: '100%', height: '100%', zIndex: 2 }}>
         <filter id={`${id}-grain`} x="0" y="0" width="100%" height="100%">
             <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="4" stitchTiles="stitch" />
             <feColorMatrix type="saturate" values="0" />
@@ -57,7 +57,7 @@ export const BgSolidGradient = ({ palette }) => {
     const id = `bg-studio-${palette.id || 'p'}`;
     return (
         <div style={abs}>
-            <GradientBase palette={palette} id={id} />
+            <div style={{ ...abs, opacity: 0.58 }}><GradientBase palette={palette} id={id} /></div>
             {/* Top/bottom fade */}
             <div style={{
                 ...abs,
@@ -280,6 +280,9 @@ export const BACKGROUNDS = {
     'layered-waves':     { id: 'layered-waves',      name: 'Silk',            component: BgLayeredWaves },
     'gold-sparkle':      { id: 'gold-sparkle',       name: 'Gold Sparkle',    component: BgGoldSparkle },
     'mesh-network':      { id: 'mesh-network',       name: 'Mesh Network',    component: BgMeshNetwork },
+    'aurora-glow':       { id: 'aurora-glow',         name: 'Aurora Glow',     component: BgLayeredWaves },
+    'editorial-grid':    { id: 'editorial-grid',      name: 'Editorial Grid',  component: BgDotGrid },
+    'campus-mesh':       { id: 'campus-mesh',         name: 'Campus Mesh',     component: BgMeshNetwork },
 };
 
 export const getBackground = (id) => BACKGROUNDS[id] || BACKGROUNDS['solid-gradient'];

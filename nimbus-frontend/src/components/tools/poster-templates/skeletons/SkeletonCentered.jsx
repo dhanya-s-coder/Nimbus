@@ -30,10 +30,11 @@ const SkeletonCentered = ({ data, palette }) => {
             padding: '28px 32px 20px',
             fontFamily: `'${bodyFont}', sans-serif`,
             color: palette.text,
+            
             boxSizing: 'border-box',
         }}>
             {/* ── Logo Row ── */}
-            <div style={{ width: '100%', marginBottom: '16px' }}>
+            <div style={{ width: 'calc(100% - 30px)', marginBottom: '16px', position: 'relative',right:'-20px' }}>
                 {renderLogos(collegeLogo, eventBrandLogo, { height: '38px', opacity: 0.92 })}
             </div>
 
@@ -50,7 +51,10 @@ const SkeletonCentered = ({ data, palette }) => {
                     background: `linear-gradient(135deg, ${palette.primary}25, ${palette.secondary}15)`,
                     border: `1px solid ${palette.primary}40`,
                     borderRadius: '20px',
-                    textAlign: 'center',
+                    width: 'fit-content',
+                    alignSelf: 'flex-start',
+                    marginLeft: '6%',
+                    textAlign: 'left',
                 }}>
                     {truncate(organizer, 50)}
                 </div>
@@ -59,27 +63,29 @@ const SkeletonCentered = ({ data, palette }) => {
             {/* ── Spacer ── */}
             <div style={{ flex: '1 1 0' }} />
 
-            {/* ── Speaker photo + Name row (if photo provided) ── */}
+            {/* ── Speaker photo left, title + speaker details right ── */}
             {speakerPhoto && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '14px' }}>
-                    {renderSpeakerAvatar(speakerPhoto, palette, 72)}
-                    {speakerName && (
-                        <div>
-                            <div style={{ fontSize: '1rem', fontWeight: 700, color: palette.text, letterSpacing: '-0.3px' }}>
-                                {speakerName}
-                            </div>
-                            {speakerDesignation && (
-                                <div style={{ fontSize: '0.6rem', color: palette.muted, marginTop: '2px' }}>
-                                    {speakerDesignation}
-                                </div>
-                            )}
-                        </div>
-                    )}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '18px', width: '88%', marginBottom: '14px', textAlign: 'left' }}>
+                    {renderSpeakerAvatar(speakerPhoto, palette, 222)}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                        {title && (
+                            <h1 style={{
+                                fontFamily: `'${titleFont}', sans-serif`, fontSize: getResponsiveTitleSize(title.length),
+                                fontWeight: 800, lineHeight: 1.0, textTransform: 'uppercase', letterSpacing: '-0.5px',
+                                margin: '0 0 8px', color: palette.text, wordBreak: 'break-word',
+                                textShadow: `0 2px 20px ${palette.primary}40`,
+                            }}>{title}</h1>
+                        )}
+                        {speakerName && <div style={{ fontSize: '0.9rem', fontWeight: 700, color: palette.text }}>
+                            {speakerName}
+                            {speakerDesignation && <div style={{ fontSize: '0.6rem', color: palette.muted, marginTop: '3px' }}>{speakerDesignation}</div>}
+                        </div>}
+                    </div>
                 </div>
             )}
 
             {/* ── Title ── */}
-            {title && (
+            {!speakerPhoto && title && (
                 <h1 style={{
                     fontFamily: `'${titleFont}', sans-serif`,
                     fontSize: getResponsiveTitleSize(title.length),
@@ -87,7 +93,8 @@ const SkeletonCentered = ({ data, palette }) => {
                     lineHeight: 1.0,
                     textTransform: 'uppercase',
                     letterSpacing: '-0.5px',
-                    textAlign: 'center',
+                    textAlign: 'justify',
+                    textAlignLast: 'left',
                     margin: '0 0 10px',
                     color: palette.text,
                     wordBreak: 'break-word',
@@ -109,7 +116,7 @@ const SkeletonCentered = ({ data, palette }) => {
                     textAlign: 'center',
                     marginBottom: '10px',
                 }}>
-                    {truncate(subtitle, 60)}
+                    {truncate(subtitle)}
                 </div>
             )}
 
@@ -152,10 +159,10 @@ const SkeletonCentered = ({ data, palette }) => {
                     fontSize: '0.7rem',
                     lineHeight: 1.7,
                     color: palette.muted,
-                    textAlign: 'center',
+                    textAlign: 'justify',
+                    textAlignLast: 'left',
                     maxWidth: '88%',
                     marginBottom: '12px',
-                    ...clampStyle(3),
                 }}>
                     {description}
                 </div>
@@ -204,12 +211,13 @@ const SkeletonCentered = ({ data, palette }) => {
                         <div key={i} style={{
                             flex: 1,
                             padding: '12px 8px',
-                            background: `linear-gradient(145deg, ${palette.primary}18, ${palette.bgMid}90)`,
+                            background: `linear-gradient(145deg, ${palette.primary}18, ${palette.bgMid}40)`,
                             border: `1px solid ${palette.primary}40`,
                             borderRadius: '10px',
                             textAlign: 'center',
                             position: 'relative',
                             overflow: 'hidden',
+                            
                         }}>
                             <div style={{
                                 position: 'absolute', top: 0, left: '20%', right: '20%', height: '1px',
@@ -234,7 +242,12 @@ const SkeletonCentered = ({ data, palette }) => {
             )}
 
             {/* ── QR Codes ── */}
-            {renderQrCodes(qr1, qr2, palette)}
+            {renderQrCodes(qr1, qr2, palette, {
+                right: '500px',
+                top: '24px',
+                bottom: 'auto',
+                scale: 0.7,
+            })}
 
             {/* ── Footer ── */}
             <div style={{

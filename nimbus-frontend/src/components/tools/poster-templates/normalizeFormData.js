@@ -35,7 +35,10 @@ export const normalizeFormData = (templateType, formData = {}) => {
 
     const organizer = d.department || d.teamName || d.organizer || d.issuedBy || '';
 
-    const description = d.description || d.details || '';
+    // Form labels use `description` for the short subheading and
+    // `subdescription` for the longer description.
+    const formSubheading = d.description || d.details || '';
+    const description = d.subdescription || '';
 
     const speakerName = d.speakerName || '';
     const speakerDesignation = d.speakerDesignation || '';
@@ -80,14 +83,20 @@ export const normalizeFormData = (templateType, formData = {}) => {
 
     if (templateType === 'event') {
         if (d.highlights) extraItems.push({ label: 'Highlights', value: splitToBullets(d.highlights) });
+        if (d.prizes) extraItems.push({ label: 'Prizes', value: splitToBullets(d.prizes) });
     }
+    // Prefer the explicitly entered short subheading; otherwise retain the
+    // template-specific subtitle (tagline, team, department, etc.).
+    subtitle = formSubheading || subtitle;
 
     const collegeLogo = d.collegeLogo || null;
     const eventBrandLogo = d.eventBrandLogo || d.eventLogo || null;
 
     const speakerPhoto = d.speakerPhoto || null;
+    const speakerShape = d.speakerShape || 'Hexagon';
 
-    const qr1 = (d.qr1Image) ? { image: d.qr1Image, label: d.qr1Label || 'Scan me!' } : null;
+    // QR is rendered only when a QR image was explicitly uploaded in the current form.
+    const qr1 = d.qr1Image ? { image: d.qr1Image, label: d.qr1Label || 'Scan to register' } : null;
     const qr2 = (d.qr2Image) ? { image: d.qr2Image, label: d.qr2Label || 'Scan me!' } : null;
 
     let footer = '';
@@ -102,6 +111,7 @@ export const normalizeFormData = (templateType, formData = {}) => {
         description,
         speakerName,
         speakerDesignation,
+        duration: d.duration || '',
         infoItems,
         extraItems,
         // Logos
@@ -110,6 +120,7 @@ export const normalizeFormData = (templateType, formData = {}) => {
         eventLogo: eventBrandLogo, // backward compat
         // Person
         speakerPhoto,
+        speakerShape,
         // QR
         qr1,
         qr2,

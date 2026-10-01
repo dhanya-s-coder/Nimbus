@@ -26,6 +26,7 @@ const UserSchema = new mongoose.Schema({
             templateType: { type: String },
             formData: { type: mongoose.Schema.Types.Mixed },
             generatedImageUrl: { type: String },
+            posterStyle: { type: mongoose.Schema.Types.Mixed },
             status: { type: String, enum: ['draft', 'final'], default: 'draft' },
             createdAt: { type: Date, default: Date.now }
         }],

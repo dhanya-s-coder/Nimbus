@@ -136,6 +136,13 @@ const DESIGN_POOLS = {
             decoration: 'gold-corners',
             palettes: ['goldFormal', 'warmAmber'],
         },
+        {
+            skeleton: 'event-cards',
+            background: 'aurora-glow',
+            frame: 'gradient-border',
+            decoration: 'glow-orbs',
+            palettes: ['roseGold', 'royalPurple', 'sunsetOrange'],
+        },
     ],
 
     hackathon: [
@@ -226,6 +233,7 @@ const DESIGN_POOLS = {
 };
 
 const usageTracker = {};
+const lastGeminiSelection = {};
 
 /**
  * Pick the next design from the curated pool for a template type.
@@ -272,11 +280,25 @@ export const getNextDesign = (templateType, hints = {}) => {
 };
 
 
-export const getDesignByIndex = (templateType, index) => {
+export const getDesignByIndex = (templateType, index, hints = {}) => {
     const pool = DESIGN_POOLS[templateType] || DESIGN_POOLS.event;
-    const safeIndex = index % pool.length;
+    let safeIndex = index % pool.length;
+    // Prevent Gemini returning the same design on every regeneration.
+    if (pool.length > 1 && lastGeminiSelection[templateType] === safeIndex) {
+        safeIndex = (safeIndex + 1) % pool.length;
+    }
+    lastGeminiSelection[templateType] = safeIndex;
     const design = pool[safeIndex];
-    const paletteId = design.palettes[0];
+    const preference = String(hints.colorPreference || '').toLowerCase();
+    const preferenceMap = {
+        vibrant: ['sunset', 'crimson', 'rose', 'neon', 'electric'],
+        'cool blues': ['blue', 'ocean', 'indigo', 'slate', 'cyber'],
+        'warm oranges': ['warm', 'amber', 'sunset', 'rose', 'gold'],
+        'modern purple': ['purple', 'violet', 'indigo', 'rose'],
+    };
+    const keywords = preferenceMap[preference] || [];
+    const preferred = design.palettes.find(id => keywords.some(word => id.toLowerCase().includes(word)));
+    const paletteId = preferred || design.palettes[Math.floor(Math.random() * design.palettes.length)];
 
     return {
         skeleton: design.skeleton,
@@ -285,6 +307,20 @@ export const getDesignByIndex = (templateType, index) => {
         decoration: design.decoration,
         paletteId,
     };
+};
+
+// Public, compact description used by the backend design selector.
+// The actual visual elements remain hardcoded in this file and the skins.
+export const getDesignCandidates = (templateType) => {
+    const pool = DESIGN_POOLS[templateType] || DESIGN_POOLS.event;
+    return pool.map((design, index) => ({
+        index,
+        skeleton: design.skeleton,
+        background: design.background,
+        frame: design.frame,
+        decoration: design.decoration,
+        palettes: design.palettes,
+    }));
 };
 
 
@@ -297,4 +333,4 @@ export const resetDesignTracker = (templateType) => {
     delete usageTracker[templateType];
 };
 
-export default { getNextDesign, getDesignByIndex, getDesignCount, resetDesignTracker };
+export default { getNextDesign, getDesignByIndex, getDesignCandidates, getDesignCount, resetDesignTracker };

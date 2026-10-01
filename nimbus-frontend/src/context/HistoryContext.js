@@ -77,6 +77,7 @@ const transformActivities = (activities) => {
         logoName: activity.logoName,
         formData: activity.formData,
         generatedImageUrl: activity.generatedImageUrl,
+        posterStyle: activity.posterStyle,
         // Report specific data
         reportType: activity.reportType,
         rawInput: activity.rawInput,

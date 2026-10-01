@@ -18,8 +18,10 @@ const SkeletonFramedClassic = ({ data, palette }) => {
     const bodyFont = palette.bodyFont || 'EB Garamond';
     const {
         title, subtitle, organizer, description, speakerName, speakerDesignation,
-        infoItems, extraItems, collegeLogo, eventBrandLogo, speakerPhoto, qr1, qr2, footer
+        infoItems, extraItems, collegeLogo, eventBrandLogo, speakerPhoto, qr1, qr2, footer, templateType
     } = data;
+    const expandedLayout = templateType !== 'academic';
+    const expandedNoSpeaker = expandedLayout && !speakerName;
 
     return (
         <div style={{
@@ -30,16 +32,21 @@ const SkeletonFramedClassic = ({ data, palette }) => {
             fontFamily: `'${bodyFont}', serif`,
             color: palette.text,
             boxSizing: 'border-box',
+            opacity: 1,
         }}>
             {/* Inner Frame */}
             <div style={{
                 width: '100%', height: '100%',
-                padding: '22px 28px 18px',
+                padding: expandedLayout ? '34px 38px 28px' : '22px 28px 18px',
                 display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center',
+                justifyContent: expandedLayout ? 'space-evenly' : 'flex-start',
+                gap: expandedNoSpeaker ? '12px' : '0',
                 position: 'relative',
-                background: `linear-gradient(145deg, ${palette.bg}e8, ${palette.bgMid}d0, ${palette.bg}e8)`,
+                // Keep the framed panel translucent so the generated background remains visible.
+                background: `linear-gradient(145deg, ${palette.bg}80, ${palette.bgMid}80, ${palette.bg}80)`,
                 border: `1.5px solid ${palette.primary}45`,
                 borderRadius: '4px',
+                opacity: 1,
                 boxShadow: `inset 0 0 40px ${palette.primary}08, 0 0 20px ${palette.primary}10`,
             }}>
                 {/* Ornamental inner border */}
@@ -59,16 +66,16 @@ const SkeletonFramedClassic = ({ data, palette }) => {
                     }} />
                 ))}
 
-                <div style={{ marginBottom: '12px', zIndex: 1, width: '100%' }}>
+                <div style={{ marginBottom: expandedLayout ? '20px' : '12px', zIndex: 1, width: '100%' }}>
                     {renderLogos(collegeLogo, eventBrandLogo, { height: '34px', opacity: 0.88 })}
                 </div>
 
                 {organizer && (
                     <div style={{
-                        fontSize: '0.56rem', letterSpacing: '2.5px', textTransform: 'uppercase',
+                        fontSize: expandedLayout ? '0.8rem' : '0.56rem', letterSpacing: '2.5px', textTransform: 'uppercase',
                         fontWeight: 700, color: palette.secondary, marginBottom: '10px',
                     }}>
-                        {truncate(organizer, 50)}
+                        {truncate(organizer)}
                     </div>
                 )}
 
@@ -90,7 +97,7 @@ const SkeletonFramedClassic = ({ data, palette }) => {
                 {title && (
                     <h1 style={{
                         fontFamily: `'${titleFont}', serif`,
-                        fontSize: getResponsiveTitleSize(title.length),
+                        fontSize: expandedLayout ? `calc(${getResponsiveTitleSize(title.length)} * 1.12)` : getResponsiveTitleSize(title.length),
                         fontWeight: 700, lineHeight: 1.1, margin: '0 0 10px',
                         color: palette.text, wordBreak: 'break-word', maxWidth: '95%',
                         textShadow: `0 2px 18px ${palette.primary}30`,
@@ -101,40 +108,65 @@ const SkeletonFramedClassic = ({ data, palette }) => {
 
                 {subtitle && (
                     <div style={{
-                        fontSize: '0.72rem', fontWeight: 500, fontStyle: 'italic',
+                        fontSize: expandedLayout ? '1.35rem' : '1rem', fontWeight: 500, fontStyle: 'italic',
                         color: palette.secondary, marginBottom: '8px', letterSpacing: '0.3px',
                     }}>
-                        {truncate(subtitle, 55)}
+                        {truncate(subtitle)}
                     </div>
                 )}
 
-                {/* Speaker with optional avatar */}
-                {speakerName && (
-                    <div style={{
-                        marginBottom: '10px', padding: '10px 16px',
-                        borderTop: `1px solid ${palette.divider}`,
-                        borderBottom: `1px solid ${palette.divider}`,
-                        background: `linear-gradient(90deg, transparent, ${palette.primary}08, transparent)`,
-                        display: 'flex', alignItems: 'center', gap: '12px', justifyContent: 'center',
-                    }}>
-                        {renderSpeakerAvatar(speakerPhoto, palette, 52)}
-                        <div>
-                            <div style={{ fontSize: '0.82rem', fontWeight: 700, color: palette.text }}>
-                                {speakerName}
-                            </div>
-                            {speakerDesignation && (
-                                <div style={{ fontSize: '0.58rem', color: palette.muted, marginTop: '2px' }}>
-                                    {speakerDesignation}
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                )}
+               {/* Speaker with optional avatar */}
+{/* Speaker with optional avatar */}
+{speakerName && (
+    <div style={{
+        marginBottom: speakerPhoto ? '14px' : '8px',
+        padding: '14px 24px',
+        minHeight: speakerPhoto ? '170px' : '0',
+        width: '88%',
+        borderTop: `1px solid ${palette.divider}`,
+        borderBottom: `1px solid ${palette.divider}`,
+        background: `linear-gradient(90deg, transparent, ${palette.primary}08, transparent)`,
+        display: 'flex',
+        alignItems: 'center',
+        gap: '20px',
+        justifyContent: 'center',
+        boxSizing: 'border-box',
+        flexShrink: 0,
+    }}>
+        {speakerPhoto && renderSpeakerAvatar(speakerPhoto, palette, 160)}
+
+        <div style={{
+            minWidth: 0,
+            textAlign: 'left',
+        }}>
+            <div style={{
+                fontSize: '0.95rem',
+                fontWeight: 700,
+                color: palette.text,
+                lineHeight: 1.2,
+            }}>
+                {speakerName}
+            </div>
+
+            {speakerDesignation && (
+                <div style={{
+                    fontSize: '0.66rem',
+                    color: palette.muted,
+                    marginTop: '5px',
+                    lineHeight: 1.3,
+                }}>
+                    {speakerDesignation}
+                </div>
+            )}
+        </div>
+    </div>
+)}
 
                 {description && (
                     <div style={{
-                        fontSize: '0.66rem', lineHeight: 1.7, color: palette.muted,
-                        maxWidth: '88%', marginBottom: '10px', ...clampStyle(3),
+                        fontSize: expandedLayout ? '0.86rem' : '0.66rem', fontWeight: 900, lineHeight: 1.7, color: palette.muted,
+                        maxWidth: expandedLayout ? '94%' : '88%', marginBottom: '10px',
+                        textAlign: 'justify', textAlignLast: 'left',
                     }}>
                         {description}
                     </div>
@@ -144,9 +176,9 @@ const SkeletonFramedClassic = ({ data, palette }) => {
                 {extraItems && extraItems.length > 0 && (
                     <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', justifyContent: 'center', marginBottom: '10px' }}>
                         {extraItems.map((item, i) => (
-                            <div key={i} style={{ textAlign: 'center', maxWidth: '45%' }}>
+                            <div key={i} style={{ textAlign: 'center', maxWidth: expandedLayout ? '48%' : '45%', flex: expandedLayout ? '1 1 45%' : '0 1 auto' }}>
                                 <div style={{
-                                    fontSize: '0.44rem', textTransform: 'uppercase', letterSpacing: '1.5px',
+                                    fontSize: expandedLayout ? '0.62rem' : '0.44rem', textTransform: 'uppercase', letterSpacing: '1.5px',
                                     fontWeight: 700, color: palette.secondary, marginBottom: '3px',
                                 }}>
                                     {item.label}
@@ -154,12 +186,12 @@ const SkeletonFramedClassic = ({ data, palette }) => {
                                 {Array.isArray(item.value) ? (
                                     <ul style={{ margin: 0, paddingLeft: '14px', listStyleType: 'disc', fontSize: '0.62rem', color: palette.text, textAlign: 'left' }}>
                                         {item.value.slice(0, 4).map((bullet, idx) => (
-                                            <li key={idx} style={{ marginBottom: '2px' }}>{truncate(bullet, 50)}</li>
+                                            <li key={idx} style={{ marginBottom: '2px' }}>{truncate(bullet)}</li>
                                         ))}
                                     </ul>
                                 ) : (
                                     <div style={{ fontSize: '0.64rem', color: palette.text, fontWeight: 500 }}>
-                                        {truncate(item.value, 60)}
+                                        {truncate(item.value)}
                                     </div>
                                 )}
                             </div>

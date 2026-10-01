@@ -18,7 +18,7 @@ const SkeletonAsymmetric = ({ data, palette }) => {
     const bodyFont = palette.bodyFont || 'DM Sans';
     const {
         title, subtitle, organizer, description, speakerName, speakerDesignation,
-        infoItems, extraItems, collegeLogo, eventBrandLogo, speakerPhoto, qr1, qr2, footer
+        infoItems, extraItems, collegeLogo, eventBrandLogo, speakerPhoto, qr1, qr2, footer, templateType
     } = data;
 
     return (
@@ -31,6 +31,14 @@ const SkeletonAsymmetric = ({ data, palette }) => {
             color: palette.text,
             boxSizing: 'border-box',
         }}>
+            {templateType === 'hackathon' && (
+                <>
+                    <div style={{ position: 'absolute', top: 18, left: 24, padding: '5px 9px', border: `1px solid ${palette.primary}`, color: palette.primary, fontFamily: 'monospace', fontSize: 9, fontWeight: 800, letterSpacing: 1, background: `${palette.bg}aa` }}>01 // CODE</div>
+                    <div style={{ position: 'absolute', right: 18, bottom: 18, width: 72, height: 72, borderRight: `2px solid ${palette.secondary}`, borderBottom: `2px solid ${palette.secondary}`, opacity: 0.7 }} />
+                    <pre style={{ position: 'absolute', inset: 0, margin: 0, padding: '70px 24px', color: palette.primary, opacity: 0.4, fontFamily: 'monospace', fontSize: 8, lineHeight: 2.2, letterSpacing: 2, whiteSpace: 'pre-wrap', wordSpacing: 18, overflow: 'hidden', pointerEvents: 'none' }}>{'01001001 10110100 00101101 >_ init()\n10111010 01100101 11001010 // compile\n00110110 10011001 01001110 >_ deploy()\n11001001 00101110 10110100 // system online\n01010101 11100010 01101001 >_ build()\n10010110 01011001 11010100 // submit'}</pre>
+                    <div style={{ position: 'absolute', left: 24, bottom: 28, color: palette.secondary, fontFamily: 'monospace', fontSize: 10, letterSpacing: 1.5, fontWeight: 800 }}>{'> BUILD // SHIP // WIN_'}</div>
+                </>
+            )}
             {/* Logo row */}
             <div style={{ marginBottom: '14px' }}>
                 {renderLogos(collegeLogo, eventBrandLogo, { height: '34px', opacity: 0.88 })}
@@ -38,7 +46,7 @@ const SkeletonAsymmetric = ({ data, palette }) => {
 
             {organizer && (
                 <div style={{
-                    fontSize: '0.52rem', letterSpacing: '2.5px', textTransform: 'uppercase',
+                    fontSize: '0.75rem', letterSpacing: '2.5px', textTransform: 'uppercase',
                     fontWeight: 700, color: palette.secondary, textAlign: 'right',
                     maxWidth: '100%', lineHeight: 1.4, marginBottom: '8px',
                 }}>
@@ -74,10 +82,10 @@ const SkeletonAsymmetric = ({ data, palette }) => {
 
             {subtitle && (
                 <div style={{
-                    fontSize: '0.72rem', fontWeight: 600, color: palette.secondary,
+                    fontSize: '1.5rem', fontWeight: 600, color: palette.secondary,
                     letterSpacing: '1px', marginBottom: '6px', paddingLeft: '18px',
                 }}>
-                    {truncate(subtitle, 50)}
+                    {truncate(subtitle)}
                 </div>
             )}
 
@@ -87,7 +95,7 @@ const SkeletonAsymmetric = ({ data, palette }) => {
                     display: 'flex', alignItems: 'center', gap: '10px',
                     marginBottom: '8px', paddingLeft: '18px',
                 }}>
-                    {renderSpeakerAvatar(speakerPhoto, palette, 52)}
+                    {renderSpeakerAvatar(speakerPhoto, palette, 222)}
                     <div>
                         <div style={{ fontSize: '0.78rem', fontWeight: 700, color: palette.accent }}>
                             {speakerName}
@@ -103,8 +111,9 @@ const SkeletonAsymmetric = ({ data, palette }) => {
 
             {description && (
                 <div style={{
-                    fontSize: '0.64rem', lineHeight: 1.65, color: palette.muted,
-                    marginBottom: '12px', maxWidth: '80%', ...clampStyle(3),
+                    fontSize: '0.75rem', lineHeight: 1.65, color: palette.muted,
+                    marginBottom: '12px', maxWidth: '80%',fontWeight: 500, wordBreak: 'break-word',
+                    textAlign: 'justify', textAlignLast: 'left',
                     paddingLeft: '18px',
                 }}>
                     {description}
@@ -112,31 +121,59 @@ const SkeletonAsymmetric = ({ data, palette }) => {
             )}
 
             {/* Extra Items */}
-            {extraItems && extraItems.length > 0 && (
-                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '12px', maxWidth: '85%' }}>
-                    {extraItems.slice(0, 3).map((item, i) => (
-                        <div key={i} style={{
-                            padding: '6px 12px', borderLeft: `2px solid ${palette.secondary}`,
-                            background: `linear-gradient(90deg, ${palette.primary}15, transparent)`,
-                        }}>
-                            <div style={{ fontSize: '0.44rem', textTransform: 'uppercase', color: palette.secondary, fontWeight: 700, marginBottom: '2px' }}>
-                                {item.label}
-                            </div>
-                            {Array.isArray(item.value) ? (
-                                <ul style={{ margin: 0, paddingLeft: '14px', listStyleType: 'disc', fontSize: '0.6rem', color: palette.text, fontWeight: 500 }}>
-                                    {item.value.slice(0, 4).map((bullet, idx) => (
-                                        <li key={idx} style={{ marginBottom: '2px' }}>{truncate(bullet, 40)}</li>
-                                    ))}
-                                </ul>
-                            ) : (
-                                <div style={{ fontSize: '0.6rem', color: palette.text, fontWeight: 500 }}>
-                                    {truncate(item.value, 50)}
-                                </div>
-                            )}
-                        </div>
-                    ))}
+{extraItems && extraItems.length > 0 && (
+    <div style={{
+        display: 'flex',
+        gap: '8px',
+        flexWrap: 'wrap',
+        marginBottom: '12px',
+        maxWidth: '85%',
+        transform: 'translateY(120px)'
+    }}>
+        {extraItems.slice(0, 3).map((item, i) => (
+            <div key={i} style={{
+                padding: '6px 12px',
+                borderLeft: `2px solid ${palette.secondary}`,
+                background: `linear-gradient(90deg, ${palette.primary}15, transparent)`,
+            }}>
+                <div style={{
+                    fontSize: '1rem',
+                    textTransform: 'uppercase',
+                    color: palette.secondary,
+                    fontWeight: 700,
+                    marginBottom: '2px'
+                }}>
+                    {item.label}
                 </div>
-            )}
+
+                {Array.isArray(item.value) ? (
+                    <ul style={{
+                        margin: 0,
+                        paddingLeft: '14px',
+                        listStyleType: 'disc',
+                        fontSize: '0.75rem',
+                        color: palette.text,
+                        fontWeight: 500
+                    }}>
+                        {item.value.slice(0, 4).map((bullet, idx) => (
+                            <li key={idx} style={{ marginBottom: '2px' }}>
+                                {truncate(bullet, 40)}
+                            </li>
+                        ))}
+                    </ul>
+                ) : (
+                    <div style={{
+                        fontSize: '0.6rem',
+                        color: palette.text,
+                        fontWeight: 500
+                    }}>
+                        {truncate(item.value)}
+                    </div>
+                )}
+            </div>
+        ))}
+    </div>
+)}
 
             <div style={{ flex: '1 1 0' }} />
 
