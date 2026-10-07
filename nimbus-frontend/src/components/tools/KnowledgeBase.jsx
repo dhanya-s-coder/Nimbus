@@ -22,6 +22,7 @@ const KnowledgeBase = () => {
     const [isAdmin, setIsAdmin] = useState(false);
     const [shareAll, setShareAll] = useState(false);
     const fileRef = useRef(null);
+    const posterRef = useRef(null);
 
     const load = useCallback(async () => {
         try {
@@ -57,6 +58,25 @@ const KnowledgeBase = () => {
             load();
         } catch (err) {
             toast.error(err.message || 'Could not read that file');
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    // reference poster -> vision model -> style card (design craft only; never copied)
+    const uploadPoster = async (file) => {
+        setSaving(true);
+        try {
+            const fd = new FormData();
+            fd.append('file', file);
+            if (isAdmin && shareAll) fd.append('scope', 'global');
+            const res = await fetchWithAuth(API_ENDPOINTS.RAG.STYLE_REFERENCE, { method: 'POST', body: fd });
+            const data = await res.json();
+            if (!res.ok || !data.success) throw new Error(data.error || data.message);
+            toast.success(data.data.duplicate ? 'Already in your style library' : `Learned the style: ${data.data.card?.name || 'reference poster'}`);
+            load();
+        } catch (err) {
+            toast.error(err.message || 'Could not analyse that poster');
         } finally {
             setSaving(false);
         }
@@ -134,6 +154,11 @@ const KnowledgeBase = () => {
                             <button className="tool-btn-secondary" style={{ width: '100%', marginTop: 8, justifyContent: 'center' }} onClick={() => fileRef.current?.click()} disabled={saving}>
                                 📄 Upload PDF / DOCX / TXT
                             </button>
+                            <button className="tool-btn-secondary" style={{ width: '100%', marginTop: 8, justifyContent: 'center' }} onClick={() => posterRef.current?.click()} disabled={saving} title="Nimbus studies the design (layout, colours, type) and uses it only as inspiration">
+                                🖼 Add a reference poster (style only)
+                            </button>
+                            <input ref={posterRef} type="file" hidden accept="image/*"
+                                onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadPoster(f); e.target.value = ''; }} />
                             <input ref={fileRef} type="file" hidden accept=".pdf,.docx,.txt,.md,.csv"
                                 onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadFile(f); e.target.value = ''; }} />
                         </section>
@@ -157,7 +182,7 @@ const KnowledgeBase = () => {
                                     <div style={{ flex: 1, minWidth: 0 }}>
                                         <div style={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.title}</div>
                                         <div style={{ fontSize: '0.75rem', opacity: 0.65 }}>
-                                            {TYPES.find((t) => t.id === s.type)?.label || s.type}{s.scope === 'global' ? ' · shared' : ''}
+                                            {s.type === 'poster_style' ? 'Style reference' : (TYPES.find((t) => t.id === s.type)?.label || s.type)}{s.scope === 'global' ? ' · shared' : ''}
                                         </div>
                                     </div>
                                     {s.scope !== 'global' && (

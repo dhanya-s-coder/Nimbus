@@ -42,6 +42,7 @@ export const API_ENDPOINTS = {
     SEARCH: `${API_BASE_URL}/api/rag/search`,
     SOURCES: `${API_BASE_URL}/api/rag/sources`,
     INGEST_FILE: `${API_BASE_URL}/api/rag/ingest-file`,
+    STYLE_REFERENCE: `${API_BASE_URL}/api/rag/style-reference`,
     CAPABILITIES: `${API_BASE_URL}/api/rag/capabilities`,
     POSTER_CONTENT: `${API_BASE_URL}/api/generate/poster-content`,
   },

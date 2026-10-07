@@ -27,7 +27,7 @@ Nimbus is a MERN application (MongoDB, Express, React, Node.js) with a Supabase 
 - `services/*.service.js`: poster, logo, report, email, poster-content generation
 - `supabase/migrations/001_rag.sql`: RAG schema (run once in the Supabase SQL editor)
 
-### Frontend layout (`nimbus-frontend/src/components/tools`)
+### Frontend layout (`nimbus-frontend/src/component s/tools`)
 - `PosterGenerator.jsx`: form, generation, save, export
 - `poster-konva/`: `PosterStage`, `PosterCustomizer`, `engine/` (fonts, text fitting, colour, export, editing), `layers/` (backgrounds, decorations, frames, UI primitives), `layouts/` (7 layouts), `data/` (palettes, design recipes, form normaliser)
 - `KnowledgeBase.jsx`: manage knowledge used for autofill and grounding
