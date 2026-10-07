@@ -9,12 +9,9 @@ import './tools.css';
 
 import PosterStage from './poster-konva/PosterStage';
 import PosterCustomizer from './poster-konva/PosterCustomizer';
-import { TemplateCards, Stepper, Inspiration, QuickTweaks, STYLE_CHIPS } from './poster-konva/ui/StudioParts';
-import { TITLE_FIELD, MOOD_LAYOUTS } from './poster-konva/data/samples';
-import { PALETTES } from './poster-konva/data/palettes';
 import { SIZES, DEFAULT_SIZE } from './poster-konva/engine/constants';
 import { exportPosterBlob, exportPosterPdf, downloadBlob, fileToPhotoDataUrl } from './poster-konva/engine/exportPoster';
-import { getDesignByIndex, getDesignRecipes, paletteFor } from './poster-konva/data/autoDesigner';
+import { getDesignByIndex, getDesignCount, getDesignRecipes } from './poster-konva/data/autoDesigner';
 import { normalizeFormData } from './poster-konva/data/normalizeFormData';
 
 const TEMPLATES = {
@@ -108,6 +105,7 @@ const PosterGenerator = () => {
     const [selectedTemplate, setSelectedTemplate] = useState('academic');
     const [formData, setFormData] = useState({});
     const [isGenerating, setIsGenerating] = useState(false);
+    const [loadingStage, setLoadingStage] = useState('');
     const [generatedImage, setGeneratedImage] = useState(null);
     const [posterStyle, setPosterStyle] = useState(null);   // ← FIX: was missing
     const [error, setError] = useState(null);
@@ -131,14 +129,6 @@ const PosterGenerator = () => {
         return () => window.removeEventListener('resize', onResize);
     }, []);
     const [autofillSources, setAutofillSources] = useState(null);
-    // "Studio" inputs: everything optional except a title (or a description to take it from)
-    const [brief, setBrief] = useState('');
-    const [instruction, setInstruction] = useState('');
-    const [useBrand, setUseBrand] = useState(true);
-    const [autoFill, setAutoFill] = useState(true);
-    const [pickedLook, setPickedLook] = useState(null);
-    const [art, setArt] = useState(null);
-    const [stepIndex, setStepIndex] = useState(0);
 
     useEffect(() => {
         if (location.state?.posterData) {
@@ -196,9 +186,6 @@ const PosterGenerator = () => {
         setGeneratedImage(null);
         setPosterStyle(null);
         setError(null);
-        setBrief('');
-        setArt(null);
-        setPickedLook(null);
     };
 
     const handleInputChange = (fieldId, value) => {
@@ -210,134 +197,105 @@ const PosterGenerator = () => {
         return requiredFields.every(f => formData[f.id]?.trim());
     };
 
-    const titleField = TITLE_FIELD[selectedTemplate];
-    const titleValue = String(formData[titleField] || '').trim();
-    const titleLabel = currentTemplate.fields.find((f) => f.id === titleField)?.label || 'Title';
-
-    // RAG: ask the server for the empty fields (from the description + knowledge base). Never overwrites typed values.
-    const fetchAutofill = async (form) => {
-        const response = await fetchWithAuth(API_ENDPOINTS.RAG.POSTER_CONTENT, {
-            method: 'POST',
-            body: JSON.stringify({ templateType: selectedTemplate, formData: form, brief, instruction })
-        });
-        const data = await response.json();
-        if (!response.ok || !data.success) throw new Error(data.error || data.message || 'Autofill failed');
-        return data.data;
-    };
-    const mergeFields = (form, fields = {}, colorPreference) => {
-        const next = { ...form };
-        Object.entries(fields).forEach(([k, v]) => { if (!String(next[k] || '').trim()) next[k] = v; });
-        if (colorPreference && currentTemplate.fields.some((f) => f.id === 'colorPreference') && !next.colorPreference) next.colorPreference = colorPreference;
-        return next;
-    };
-
+    // RAG: fill the still-empty text fields from the knowledge base (never overwrites what the user typed).
     const handleAutofill = async () => {
-        if (!titleValue && !brief.trim()) {
-            toast.warning('Enter a title or describe your event first.');
+        if (!isFormValid()) {
+            toast.warning("Enter the required title first, then autofill the rest.");
             return;
         }
         setIsAutofilling(true);
         try {
-            const { fields = {}, colorPreference, sources = [], grounded } = await fetchAutofill(formData);
-            setFormData((prev) => mergeFields(prev, fields, colorPreference));
+            const response = await fetchWithAuth(API_ENDPOINTS.RAG.POSTER_CONTENT, {
+                method: 'POST',
+                body: JSON.stringify({ templateType: selectedTemplate, formData })
+            });
+            const data = await response.json();
+            if (!response.ok || !data.success) throw new Error(data.error || data.message || 'Autofill failed');
+            const { fields = {}, colorPreference, sources = [], grounded } = data.data;
+            const hasColorField = currentTemplate.fields.some(f => f.id === 'colorPreference');
+            setFormData(prev => {
+                const next = { ...prev };
+                Object.entries(fields).forEach(([k, v]) => { if (!String(next[k] || '').trim()) next[k] = v; });
+                if (colorPreference && hasColorField && !next.colorPreference) next.colorPreference = colorPreference;
+                return next;
+            });
             setAutofillSources(sources);
             const n = Object.keys(fields).length;
-            toast.success(n ? `Filled ${n} field${n === 1 ? '' : 's'}${grounded === false ? ' (knowledge base unavailable)' : ''}` : 'Nothing left to fill');
+            toast.success(n ? `Filled ${n} field${n === 1 ? '' : 's'}${grounded === false ? ' (knowledge base unavailable)' : ''}` : "Nothing left to fill");
         } catch (err) {
-            toast.error(err.message || 'Autofill failed');
+            toast.error(err.message || "Autofill failed");
         } finally {
             setIsAutofilling(false);
         }
     };
 
-    // Choose layout + palette: the user's pick, else something matching the art director's mood, rotating for variety.
-    const chooseStyle = (artPlan, form) => {
-        let design;
-        if (pickedLook) {
-            design = { ...pickedLook, paletteId: pickedLook.paletteId || pickedLook.palettes?.[0] };
-        } else {
-            const pool = getDesignRecipes(selectedTemplate);
-            const wanted = artPlan?.mood && MOOD_LAYOUTS[artPlan.mood];
-            let candidates = wanted ? pool.filter((d) => wanted.includes(d.skeleton)) : pool;
-            if (!candidates.length) candidates = pool;
-            const key = `nimbus-design-rotation-${selectedTemplate}`;
-            const rot = Number(localStorage.getItem(key) || 0);
-            localStorage.setItem(key, String(rot + 1));
-            const d = candidates[rot % candidates.length];
-            design = { ...d, paletteId: paletteFor(d, form.colorPreference) };
-        }
-        const { index: _i, palettes: _p, ...recipe } = design;
-        return recipe;
-    };
-
-    const requestBackground = async (form, extra = {}) => {
-        const response = await fetchWithAuth(API_ENDPOINTS.POSTER.GENERATE, {
-            method: 'POST',
-            body: JSON.stringify({ templateType: selectedTemplate, formData: form, instruction, useBrandStyle: useBrand, ...extra })
-        });
-        const data = await response.json();
-        if (!response.ok) {
-            if (response.status === 401) {
-                localStorage.removeItem('accessToken');
-                localStorage.removeItem('user');
-                setTimeout(() => { window.location.href = '/login'; }, 2000);
-                throw new Error('Your session has expired. Please log in again.');
-            }
-            throw new Error(data.error || data.message || `Server error: ${response.statusText}`);
-        }
-        if (!data.success || !data.data?.image) throw new Error(data.message || 'Failed to generate poster');
-        return data.data;
-    };
-
-    // One click: understand the details -> design the background -> compose the poster.
-    const handleCreate = async () => {
-        if (!titleValue && !brief.trim()) {
-            toast.warning('Type a title, or describe your event, to get started.');
+    const handleGenerate = async () => {
+        if (!isFormValid()) {
+            toast.warning("Please fill in all required fields first.");
             return;
         }
-        const keepCustom = posterStyle?.custom ? { ...posterStyle.custom, overrides: undefined } : undefined; // size/font/own text survive; moved positions don't
+
+        const keepCustom = posterStyle?.custom ? { ...posterStyle.custom, overrides: undefined } : undefined;   // size / font / colours / own text survive regeneration; moved positions don't
         past.current = []; future.current = [];
         setIsGenerating(true);
         setError(null);
         setGeneratedImage(null);
         setPosterStyle(null);
-        setArt(null);
-        setStepIndex(0);
+        setLoadingStage("🎨 Designing your poster style...");
 
         try {
-            let form = formData;
-            if (autoFill || brief.trim()) {
-                try {
-                    const { fields = {}, colorPreference, sources = [] } = await fetchAutofill(form);
-                    form = mergeFields(form, fields, colorPreference);
-                    setFormData(form);
-                    setAutofillSources(sources);
-                } catch (err) {
-                    toast.info('Could not read your details automatically; continuing with what you typed.');
+            const response = await fetchWithAuth(API_ENDPOINTS.POSTER.GENERATE, {
+                method: 'POST',
+                body: JSON.stringify({
+                    templateType: selectedTemplate,
+                    formData
+                })
+            });
+
+            setLoadingStage("🖼️ Generating AI background...");
+            const data = await response.json();
+
+            if (!response.ok) {
+                if (response.status === 401) {
+                    setError("Your session has expired. Please log in again.");
+                    localStorage.removeItem('accessToken');
+                    localStorage.removeItem('user');
+                    setTimeout(() => window.location.href = '/login', 2000);
+                } else if (response.status === 503) {
+                    setError(data.message || "AI model is loading. Please wait a few seconds and try again.");
+                } else {
+                    setError(data.error || data.message || `Server error: ${response.statusText}`);
                 }
+                return;
             }
-            if (!String(form[titleField] || '').trim()) throw new Error('Please add a title for your poster.');
 
-            setStepIndex(1);
-            const result = await requestBackground(form);
-            setGeneratedImage(result.image.url);
-            setArt(result.art || null);
-
-            setStepIndex(2);
-            const recipe = chooseStyle(result.art, form);
-            const custom = { ...(keepCustom || {}) };
-            if (result.art?.colors?.length) {
-                recipe.paletteId = 'brand';          // colours came from the user's brand notes / style wishes
-                custom.brandColors = result.art.colors;
+            if (!data.success || !data.data?.image) {
+                throw new Error(data.message || 'Failed to generate poster');
             }
-            setPosterStyle(Object.keys(custom).length ? { ...recipe, custom } : recipe);
-            toast.success('Your poster is ready');
+
+            setLoadingStage("✨ Finalising your poster...");
+
+            const imageUrl = data.data.image.url;
+            setGeneratedImage(imageUrl);
+
+            // Apply new poster-templates design
+            const rotationKey = `nimbus-design-rotation-${selectedTemplate}`;
+            const rotation = Number(localStorage.getItem(rotationKey) || 0);
+            localStorage.setItem(rotationKey, String(rotation + 1));
+            // Rotate locally on every regeneration so the visual layout changes predictably.
+            const selectedIndex = rotation % getDesignCount(selectedTemplate);
+            const design = getDesignByIndex(selectedTemplate, selectedIndex, {
+                colorPreference: formData.colorPreference,
+            });
+            setPosterStyle(keepCustom ? { ...design, custom: keepCustom } : design);
+
+            toast.success(data.message || "Poster generated successfully!");
         } catch (err) {
             setError(err.message);
-            toast.error(err.message || 'Failed to create poster');
+            toast.error(err.message || "Failed to generate poster");
         } finally {
             setIsGenerating(false);
-            setStepIndex(0);
+            setLoadingStage('');
         }
     };
 
@@ -441,12 +399,13 @@ const PosterGenerator = () => {
     const handleNewBackground = async () => {
         setIsBgBusy(true);
         try {
-            const result = await requestBackground(formData);
-            setGeneratedImage(result.image.url);
-            if (result.art) {
-                setArt(result.art);
-                if (result.art.colors?.length && styleRef.current?.paletteId === 'brand') updateCustom({ brandColors: result.art.colors });
-            }
+            const response = await fetchWithAuth(API_ENDPOINTS.POSTER.GENERATE, {
+                method: 'POST',
+                body: JSON.stringify({ templateType: selectedTemplate, formData })
+            });
+            const data = await response.json();
+            if (!response.ok || !data.success) throw new Error(data.error || data.message || 'Could not generate a background');
+            setGeneratedImage(data.data.image.url);
             toast.success('New background ready');
         } catch (err) {
             toast.error(err.message);
@@ -454,14 +413,6 @@ const PosterGenerator = () => {
             setIsBgBusy(false);
         }
     };
-
-    // quick tweaks
-    const tweakColors = () => {
-        const ids = Object.keys(PALETTES).filter((id) => id !== styleRef.current?.paletteId);
-        setPosterStyle((p) => (p ? { ...p, paletteId: ids[Math.floor(Math.random() * ids.length)] } : p));
-    };
-    const tweakPhoto = (delta) => updateCustom({ photoStrength: Math.max(0, Math.min(1.5, (styleRef.current?.custom?.photoStrength ?? 1) + delta)) });
-    const tweakTitle = (delta) => updateCustom({ textScale: Math.max(0.6, Math.min(1.4, (styleRef.current?.custom?.textScale || 1) + delta)) });
 
     const handleUploadPhoto = async (file) => {
         try {
@@ -594,24 +545,6 @@ const PosterGenerator = () => {
     };
 
     // ─────────────────────────────────────────────────────────────────────────
-    const titlePlaceholder = currentTemplate.fields.find((f) => f.id === titleField)?.placeholder || '';
-    const briefPlaceholder = {
-        academic: 'e.g. Guest lecture by Dr. Rao on AI in healthcare, 15 Jan 10 AM at Seminar Hall A. Open to all departments.',
-        recruitment: 'e.g. Recruiting design and web dev members, 2nd year and above. Apply by 20 Jan. Mentorship + certificates.',
-        event: 'e.g. Annual cultural fest on 15-17 March at the Main Auditorium with live music, dance and food stalls.',
-        hackathon: 'e.g. 36 hour hackathon on 14-15 Feb at the Main Auditorium, Rs 40,000 prize pool, register by 10 Feb.',
-        announcement: 'e.g. Library will remain closed on Friday for maintenance. Applicable to all students.',
-    }[selectedTemplate];
-    const filledMore = currentTemplate.fields.filter((f) => f.id !== titleField && String(formData[f.id] || '').trim()).length;
-    const toggleChip = (chip) => {
-        setInstruction((cur) => {
-            const parts = cur.split(',').map((x) => x.trim()).filter(Boolean);
-            const has = parts.some((x) => x.toLowerCase() === chip.toLowerCase());
-            return (has ? parts.filter((x) => x.toLowerCase() !== chip.toLowerCase()) : [...parts, chip]).join(', ');
-        });
-    };
-    const chipOn = (chip) => instruction.toLowerCase().split(',').map((x) => x.trim()).includes(chip.toLowerCase());
-
     return (
         <div className="tool-page">
             <div className="tool-container">
@@ -620,79 +553,68 @@ const PosterGenerator = () => {
                 <div className="tool-panel tool-panel-left">
                     <div className="panel-inner">
                         <header className="tool-header">
-                            <h2 className="tool-title">Create a poster</h2>
+                            <h2 className="tool-title">Poster Ideas</h2>
+                            <p className="tool-subtitle">Fill the required fields to generate a poster</p>
                         </header>
-                        <p className="ps-lead">A title is enough. Or paste a few details and Nimbus will fill in the rest, design the background and lay it all out.</p>
 
-                        <div className="ps-section-label">What are you making?</div>
-                        <TemplateCards templates={TEMPLATES} selected={selectedTemplate} onSelect={handleTemplateChange} />
-
-                        <div className="ps-section-label">{titleLabel.replace(/\*$/, '')} <small>required</small></div>
-                        <div className="ps-field">
-                            <input
-                                type="text"
-                                id={titleField}
-                                className="ps-title-input"
-                                value={formData[titleField] || ''}
-                                onChange={(e) => handleInputChange(titleField, e.target.value)}
-                                onKeyDown={(e) => { if (e.key === 'Enter' && !isGenerating) handleCreate(); }}
-                                placeholder={titlePlaceholder}
-                                autoComplete="off"
-                            />
-                        </div>
-
-                        <div className="ps-section-label">Tell us more <small>optional — dates, venue, who it's for…</small></div>
-                        <div className="ps-field">
-                            <textarea id="ps-brief" value={brief} onChange={(e) => setBrief(e.target.value)} placeholder={briefPlaceholder} rows={4} />
-                        </div>
-
-                        <div className="ps-section-label">Style wishes <small>optional</small></div>
-                        <div className="ps-field">
-                            <input type="text" id="ps-style" value={instruction} onChange={(e) => setInstruction(e.target.value)}
-                                placeholder="e.g. elegant dark blue with golden accents, graduation theme" autoComplete="off" />
-                            <div className="ps-chips">
-                                {STYLE_CHIPS.map((c) => (
-                                    <button key={c} type="button" className={`ps-chip ${chipOn(c) ? 'on' : ''}`} onClick={() => toggleChip(c)}>{c}</button>
-                                ))}
-                            </div>
-                        </div>
-
-                        <div className="ps-toggles">
-                            <label className="ps-toggle">
-                                <input type="checkbox" checked={autoFill} onChange={(e) => setAutoFill(e.target.checked)} />
-                                <span>Let Nimbus write the rest<small>Fills empty fields from your details and Knowledge Base</small></span>
-                            </label>
-                            <label className="ps-toggle">
-                                <input type="checkbox" checked={useBrand} onChange={(e) => setUseBrand(e.target.checked)} />
-                                <span>Use my brand style<small>Backgrounds and colours follow your Knowledge Base</small></span>
-                            </label>
-                        </div>
-
-                        <section className="tool-actions">
-                            <button className="ps-create tool-btn-generate" onClick={handleCreate} disabled={isGenerating}>
-                                {isGenerating ? 'Creating your poster…' : (posterStyle ? '✨ Create a fresh poster' : '✨ Create poster')}
-                            </button>
-                        </section>
-
-                        <details className="ps-more">
-                            <summary>More details <span>{filledMore ? `${filledMore} filled` : 'speaker, date, venue, logos, QR…'}</span></summary>
-                            <div className="ps-more-body">
-                                {currentTemplate.fields.filter((f) => f.id !== titleField).map((field) => (
-                                    <div key={field.id} className="tool-form-group">
-                                        <label htmlFor={field.id}>{field.label}</label>
-                                        {renderField(field)}
+                        <section className="tool-form-section">
+                            <h3>Select Template</h3>
+                            <div className="tool-options-grid">
+                                {Object.entries(TEMPLATES).map(([id, template]) => (
+                                    <div
+                                        key={id}
+                                        className={`tool-option-card ${selectedTemplate === id ? 'active' : ''}`}
+                                        onClick={() => handleTemplateChange(id)}
+                                    >
+                                        <span className="template-name">{template.name}</span>
                                     </div>
                                 ))}
-                                <button className="tool-btn-secondary" style={{ width: '100%', justifyContent: 'center' }} onClick={handleAutofill} disabled={isAutofilling || isGenerating}>
-                                    {isAutofilling ? 'Reading your knowledge base…' : '🧠 Fill empty fields with Nimbus'}
-                                </button>
-                                {autofillSources && (
-                                    <p style={{ fontSize: '0.75rem', opacity: 0.7, margin: '0.6rem 0 0' }}>
-                                        {autofillSources.length ? `Used: ${autofillSources.map((x) => x.title).join(', ')}` : 'No matching knowledge found — add some in Knowledge Base for better results.'}
-                                    </p>
-                                )}
                             </div>
-                        </details>
+                        </section>
+
+                        <section className="tool-form-section">
+                            <h3>Poster Details</h3>
+                            {currentTemplate.fields.map(field => (
+                                <div key={field.id} className="tool-form-group">
+                                    <label htmlFor={field.id}>
+                                        {field.label}
+                                        {field.required && <span className="required">*</span>}
+                                    </label>
+                                    {renderField(field)}
+                                </div>
+                            ))}
+                        </section>
+
+                        <section className="tool-actions">
+                            <button
+                                className="tool-btn-secondary"
+                                style={{ width: '100%', marginBottom: '0.6rem', justifyContent: 'center' }}
+                                onClick={handleAutofill}
+                                disabled={isAutofilling || isGenerating}
+                            >
+                                {isAutofilling ? 'Reading your knowledge base...' : '🧠 Autofill with Nimbus'}
+                            </button>
+                            {autofillSources && (
+                                <p style={{ fontSize: '0.75rem', opacity: 0.7, margin: '0 0 0.6rem' }}>
+                                    {autofillSources.length
+                                        ? `Used: ${autofillSources.map(s => s.title).join(', ')}`
+                                        : 'No matching knowledge found — add some in Knowledge Base for better results.'}
+                                </p>
+                            )}
+                            <button
+                                className="tool-btn-generate"
+                                onClick={handleGenerate}
+                                disabled={isGenerating}
+                            >
+                                {isGenerating ? (
+                                    <span className="loading-dots">
+                                        {loadingStage || 'Generating'}<span>.</span><span>.</span><span>.</span>
+                                    </span>
+                                ) : (
+                                    <>✨ Generate Poster</>
+                                )}
+                            </button>
+                        </section>
 
                         <div className="tool-footer-history">
                             <RecentActivity filterType="Posters" limit={3} title="Recent Posters" />
@@ -704,22 +626,33 @@ const PosterGenerator = () => {
                 <div className="tool-panel tool-panel-right">
                     <div className="panel-inner">
                         <header className="tool-header space-between">
-                            <h2 className="tool-title">{generatedImage && posterStyle ? 'Your poster' : 'Design Preview'}</h2>
-                            {generatedImage && posterStyle && <span className="premium-badge">Ready to Export</span>}
+                            <h2 className="tool-title">Design Preview</h2>
+                            {generatedImage && <span className="premium-badge">Ready to Export</span>}
                         </header>
 
                         <div className="tool-preview-container">
 
+                            {/* Loading state */}
                             {isGenerating && (
-                                <Stepper steps={['Reading your details', 'Designing the background', 'Composing your poster']} active={stepIndex} />
+                                <div className="tool-preview-loading">
+                                    <div className="spinner"></div>
+                                    <p>{loadingStage || 'Generating your poster...'}</p>
+                                    <p className="loading-hint">This may take a moment</p>
+                                </div>
                             )}
 
-                            {!isGenerating && error && <div className="ps-error">⚠️ {error}</div>}
+                            {/* Error state */}
+                            {!isGenerating && error && (
+                                <div className="tool-preview-error">
+                                    <p>⚠️ {error}</p>
+                                </div>
+                            )}
 
+                            {/* ── Poster Preview ── */}
                             {!isGenerating && generatedImage && posterStyle && (
                                 <>
                                     <div style={{ display: 'flex', justifyContent: 'center', width: '100%', overflow: 'auto', borderRadius: '12px', paddingBottom: '10px' }}>
-                                        <div style={{ flexShrink: 0, width: `${previewWidth}px`, boxShadow: '0 18px 50px rgba(15,23,42,.28)', borderRadius: 6, overflow: 'hidden' }}>
+                                        <div style={{ flexShrink: 0, width: `${previewWidth}px` }}>
                                             <PosterStage
                                                 ref={stageRef}
                                                 recipe={posterStyle}
@@ -736,17 +669,6 @@ const PosterGenerator = () => {
                                             />
                                         </div>
                                     </div>
-
-                                    <QuickTweaks onColors={tweakColors} onLayout={handleShuffle} onBackground={handleNewBackground}
-                                        onPhoto={tweakPhoto} onTitleSize={tweakTitle} busy={isBgBusy} />
-
-                                    {art?.prompt && (
-                                        <details className="ps-idea">
-                                            <summary>🎨 Background idea{art.mood ? ` · ${art.mood}` : ''}</summary>
-                                            <p style={{ margin: '6px 0 0' }}>{art.prompt}</p>
-                                            <p style={{ margin: '6px 0 0', opacity: .8 }}>Want it different? Change <b>Style wishes</b> on the left, then click <b>🖼 Background</b>.</p>
-                                        </details>
-                                    )}
 
                                     <PosterCustomizer
                                         template={selectedTemplate}
@@ -775,18 +697,28 @@ const PosterGenerator = () => {
                                         onRestore={restoreElement}
                                     />
 
-                                    <div className="ps-actions">
-                                        <button className="tool-btn-generate" style={{ width: 'auto', padding: '0.7rem 1.4rem' }} onClick={() => handleDownload('png')}>⬇ Download PNG</button>
+                                    {/* Action buttons below poster */}
+                                    <div className="tool-actions" style={{ marginTop: '1rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                        <button className="tool-btn-secondary" onClick={() => handleSave('draft')} disabled={isSaving}>
+                                            <FiFileText /> {isSaving ? 'Saving...' : 'Save Draft'}
+                                        </button>
+                                        <button className="tool-btn-primary" onClick={() => handleSave('final')} disabled={isSaving}>
+                                            <FiCheckCircle /> {isSaving ? 'Saving...' : 'Finalise'}
+                                        </button>
+                                        <button className="tool-btn-generate" onClick={() => handleDownload('png')}>
+                                            Download PNG
+                                        </button>
                                         <button className="tool-btn-secondary" onClick={() => handleDownload('jpg')}>JPG</button>
                                         <button className="tool-btn-secondary" onClick={() => handleDownload('pdf')}>PDF</button>
-                                        <button className="tool-btn-secondary" onClick={() => handleSave('draft')} disabled={isSaving}><FiFileText /> {isSaving ? 'Saving...' : 'Save Draft'}</button>
-                                        <button className="tool-btn-primary" onClick={() => handleSave('final')} disabled={isSaving}><FiCheckCircle /> {isSaving ? 'Saving...' : 'Finalise'}</button>
                                     </div>
                                 </>
                             )}
 
-                            {!isGenerating && !(generatedImage && posterStyle) && (
-                                <Inspiration template={selectedTemplate} title={formData[titleField]} picked={pickedLook} onPick={setPickedLook} />
+                            {/* Empty state */}
+                            {!isGenerating && !generatedImage && !error && (
+                                <div className="tool-preview-empty">
+                                    <p>  Fill in the details and click Generate to create your poster.</p>
+                                </div>
                             )}
                         </div>
                     </div>
