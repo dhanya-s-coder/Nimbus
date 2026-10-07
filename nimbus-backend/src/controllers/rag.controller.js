@@ -46,8 +46,8 @@ export const deleteController = async (req, res) => {
 
 export const posterContentController = async (req, res) => {
     try {
-        const { templateType, formData, instruction, textProvider } = req.body;
-        const data = await generatePosterContent({ userId: req.user.userId, templateType, formData, instruction, textProvider });
+        const { templateType, formData, instruction, brief, textProvider } = req.body;
+        const data = await generatePosterContent({ userId: req.user.userId, templateType, formData, instruction, brief, textProvider });
         res.json({ success: true, data });
     } catch (e) { fail(res, e, 'Failed to generate poster content'); }
 };

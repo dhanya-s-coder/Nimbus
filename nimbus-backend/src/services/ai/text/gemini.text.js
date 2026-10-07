@@ -14,13 +14,35 @@ const getClient = () => {
 
 const defaultModel = () => process.env.GEMINI_TEXT_MODEL || 'gemini-2.5-flash';
 
-const run = async ({ prompt, systemPrompt, modelName, json }) => {
+// Each Gemini model has its own quota, so quota/overload errors fall through to the next model.
+const fallbackModels = () =>
+    (process.env.GEMINI_FALLBACK_MODELS ?? 'gemini-flash-lite-latest').split(',').map((m) => m.trim()).filter(Boolean);
+
+const runOn = async (modelId, { prompt, systemPrompt, json }) => {
+    const thinking = modelId.includes('2.5') ? { thinkingConfig: { thinkingBudget: Number(process.env.GEMINI_THINKING_BUDGET ?? 0) } } : {};
     const model = getClient().getGenerativeModel({
-        model: modelName || defaultModel(),
+        model: modelId,
         ...(systemPrompt ? { systemInstruction: systemPrompt } : {}),
-        ...(json ? { generationConfig: { responseMimeType: 'application/json' } } : {}),
+        // Gemini 2.5 "thinking" adds many seconds to short writing/extraction tasks; budget 0 disables it (env to re-enable)
+        generationConfig: { ...(json ? { responseMimeType: 'application/json' } : {}), ...thinking },
     });
-    return withRetry(NAME, async () => (await model.generateContent(prompt)).response.text());
+    return withRetry(NAME, async () => (await model.generateContent(prompt)).response.text(), { retries: 0 });
+};
+
+const run = async ({ prompt, systemPrompt, modelName, json }) => {
+    const chain = modelName ? [modelName] : [defaultModel(), ...fallbackModels().filter((m) => m !== defaultModel())];
+    let lastErr;
+    for (const modelId of chain) {
+        try {
+            return await runOn(modelId, { prompt, systemPrompt, json });
+        } catch (err) {
+            lastErr = err;
+            const retryable = err.status === 429 || err.status === 503 || err.status === 404 || err.retryable;
+            if (!retryable) throw err;
+            if (chain.length > 1) console.warn(`⚠️ gemini model "${modelId}" unavailable (${err.status}); trying next`);
+        }
+    }
+    throw lastErr;
 };
 
 export const geminiText = {

@@ -5,7 +5,7 @@ const MOODS = ['formal', 'elegant', 'playful', 'energetic', 'tech', 'minimal'];
 
 const hex = z.string().regex(/^#?[0-9a-fA-F]{6}$/).transform((c) => (c.startsWith('#') ? c : `#${c}`).toLowerCase());
 const schema = z.object({
-    imagePrompt: z.string().min(12).max(700),
+    imagePrompt: z.string().min(12).transform((t) => t.slice(0, 900)),
     mood: z.string().transform((m) => (MOODS.includes(m.toLowerCase()) ? m.toLowerCase() : 'minimal')).default('minimal'),
     colors: z.array(z.string()).default([]).transform((arr) => arr.map((c) => hex.safeParse(c)).filter((r) => r.success).map((r) => r.data).slice(0, 3)),
 });
