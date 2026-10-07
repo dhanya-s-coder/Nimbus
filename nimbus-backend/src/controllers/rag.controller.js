@@ -2,6 +2,7 @@ import { ingestText, listSources, deleteSource, SOURCE_TYPES } from '../services
 import { searchKnowledge } from '../services/rag/retrieval.service.js';
 import { generatePosterContent } from '../services/posterContent.service.js';
 import { extractText } from '../services/rag/extract.service.js';
+import { analyzePosterImage, styleCardToText } from '../services/rag/styleAnalyzer.service.js';
 
 const isAdmin = (req) =>
     (process.env.RAG_ADMIN_EMAILS || '').split(',').map((s) => s.trim().toLowerCase()).filter(Boolean)
@@ -64,4 +65,17 @@ export const ingestFileController = async (req, res) => {
         const result = await ingestText({ ownerId: req.user.userId, scope, type: req.body.type || 'upload', title, text, metadata: { filename: req.file.originalname } });
         res.status(result.duplicate ? 200 : 201).json({ success: true, data: { ...result, characters: text.length } });
     } catch (e) { fail(res, e, 'Failed to ingest file'); }
+};
+
+/** Upload a reference poster image: Gemini/Claude vision turns it into a style card stored as knowledge. */
+export const styleReferenceController = async (req, res) => {
+    try {
+        if (!req.file || !/^image\//.test(req.file.mimetype)) return res.status(400).json({ success: false, message: 'Attach a poster image in the "file" field' });
+        const scope = req.body.scope === 'global' ? 'global' : 'user';
+        if (scope === 'global' && !isAdmin(req)) return res.status(403).json({ success: false, message: 'Only admins can add shared style references' });
+        const card = await analyzePosterImage({ buffer: req.file.buffer, mimeType: req.file.mimetype, textProvider: req.body.textProvider });
+        const title = (req.body.title || card.name || req.file.originalname || 'Reference poster').slice(0, 120);
+        const result = await ingestText({ ownerId: req.user.userId, scope, type: 'poster_style', title, text: styleCardToText(card), metadata: { card } });
+        res.status(result.duplicate ? 200 : 201).json({ success: true, data: { ...result, card } });
+    } catch (e) { fail(res, e, 'Failed to analyse reference poster'); }
 };

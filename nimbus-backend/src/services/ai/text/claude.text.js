@@ -14,14 +14,22 @@ const getClient = () => {
 
 const defaultModel = () => process.env.CLAUDE_TEXT_MODEL || 'claude-sonnet-5-5';
 
-const run = async ({ prompt, systemPrompt, modelName }) => {
+const run = async ({ prompt, systemPrompt, modelName, images }) => {
     const res = await withRetry(NAME, (signal) =>
         getClient().messages.create(
             {
                 model: modelName || defaultModel(),
                 max_tokens: Number(process.env.CLAUDE_MAX_TOKENS) || 4096,
                 ...(systemPrompt ? { system: systemPrompt } : {}),
-                messages: [{ role: 'user', content: prompt }],
+                messages: [{
+                    role: 'user',
+                    content: images?.length
+                        ? [
+                            ...images.map((i) => ({ type: 'image', source: { type: 'base64', media_type: i.mimeType || 'image/png', data: Buffer.isBuffer(i.data) ? i.data.toString('base64') : i.data } })),
+                            { type: 'text', text: prompt },
+                        ]
+                        : prompt,
+                }],
             },
             { signal }
         )
@@ -31,13 +39,13 @@ const run = async ({ prompt, systemPrompt, modelName }) => {
 
 export const claudeText = {
     name: NAME,
-    async generateText({ prompt, systemPrompt, modelName }) {
-        return run({ prompt, systemPrompt, modelName });
+    async generateText({ prompt, systemPrompt, modelName, images }) {
+        return run({ prompt, systemPrompt, modelName, images });
     },
     // Claude has no JSON mode: instruct, parse loosely, one repair retry.
-    async generateJSON({ prompt, systemPrompt, modelName }) {
+    async generateJSON({ prompt, systemPrompt, modelName, images }) {
         const system = `${systemPrompt ? systemPrompt + '\n\n' : ''}Respond with a single valid JSON value and nothing else (no prose, no code fences).`;
-        const text = await run({ prompt, systemPrompt: system, modelName });
+        const text = await run({ prompt, systemPrompt: system, modelName, images });
         try {
             return parseJSONLoose(text, NAME);
         } catch {
@@ -45,6 +53,7 @@ export const claudeText = {
                 prompt: `${prompt}\n\nYour previous reply was not valid JSON. Reply again with ONLY the JSON.`,
                 systemPrompt: system,
                 modelName,
+                images,
             });
             return parseJSONLoose(retry, NAME);
         }

@@ -3,7 +3,7 @@ import { getSupabase } from '../../config/supabase.js';
 import { chunkText } from './chunker.js';
 import { embedTexts } from './embedding.service.js';
 
-export const SOURCE_TYPES = ['brand_kit', 'past_event', 'policy', 'contact', 'template_copy', 'note', 'upload'];
+export const SOURCE_TYPES = ['brand_kit', 'past_event', 'policy', 'contact', 'template_copy', 'note', 'upload', 'poster_style'];
 
 /** Ingest text as a knowledge source (deduped by content hash per owner/scope). */
 export const ingestText = async ({ ownerId = null, scope = 'user', type = 'note', title, text, metadata = {} }) => {

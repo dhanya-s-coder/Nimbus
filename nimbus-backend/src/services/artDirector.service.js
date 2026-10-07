@@ -33,7 +33,7 @@ export const planArtDirection = async ({ userId, templateType, formData = {}, in
     const style = String(instruction || '').slice(0, 400);
     const result = await runGeneration({
         kind: 'art-direction', userId, textProvider, k: 6,
-        types: ['brand_kit', 'past_event', 'template_copy', 'note'],
+        types: ['brand_kit', 'past_event', 'template_copy', 'note', 'poster_style'],
         query: [title, TEMPLATE_HINT[templateType], org, style, 'brand colours visual style mood'].filter(Boolean).join(' '),
         input: { templateType, title, style },
         systemPrompt: 'You are an award-winning poster art director. You output only JSON.',
@@ -44,6 +44,7 @@ ${org ? `Organiser: ${org}\n` : ''}${formData.colorPreference ? `Colour preferen
 ${context}
 
 If the knowledge base describes the brand's colours, tone or imagery, honour it (it ranks below the user's style notes).
+Entries of type poster_style are STYLE REFERENCES from past department posters: use them only as inspiration for craft (layering, texture, typography mood, colour discipline). Invent a NEW concept for this event; never reuse their subjects (statues, dancers, fruit, people), compositions or wording. Do NOT inherit their colour palettes: choose colours from this event's meaning, the brand notes or the user's wishes.
 Return JSON exactly like:
 {"imagePrompt": "<one rich paragraph for an AI image generator: subject/scene, art style, lighting, colour palette, texture, composition>", "mood": "formal|elegant|playful|energetic|tech|minimal", "colors": ["#rrggbb", "#rrggbb"]}
 Rules for imagePrompt:
