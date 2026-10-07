@@ -1,9 +1,5 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { generateReportContent } from "../services/report.service.js";
 import { saveReport, getActivityByUserAndType, deleteActivity } from "../services/history.service.js";
-
-const apiKey = process.env.GEMINI_API_KEY;
-const genAI = apiKey ? new GoogleGenerativeAI(apiKey) : null;
-const model = genAI ? genAI.getGenerativeModel({ model: "gemini-2.5-flash" }) : null;
 
 export const generateReportController = async (req, res) => {
     try {
@@ -13,42 +9,18 @@ export const generateReportController = async (req, res) => {
             return res.status(400).json({ success: false, message: "Missing required fields" });
         }
 
-        if (!model) {
-            return res.status(500).json({ success: false, message: "AI model not initialized" });
-        }
-
-        const prompt = `
-You are an expert administrative assistant. Your task is to generate a professional, structured report based on the following details.
-
-Report Type: ${reportType}
-Report Title: ${title}
-Raw Notes/Input: 
-${rawInput}
-
-Guidelines:
-1. Use professional, formal language.
-2. Structure the report with clear Markdown headers (# for title, ## for sections).
-3. Use bullet points and tables where appropriate for clarity.
-4. If it's "Meeting Minutes", include sections for Attendees, Discussion Points, Decisions Made, and Action Items.
-5. If it's "Event Summary", include Participation, Key Highlights, Challenges, and Recommendations.
-6. If it's "Monthly Progress", summarize metrics, achievements, and future goals.
-7. Do not include conversational filler. Just the report text.
-
-Generate the report now in English.
-`;
-
-        const result = await model.generateContent(prompt);
-        const reportContent = result.response.text();
+        const { text: reportContent, sources } = await generateReportContent({ userId: req.user?.userId, reportType, title, rawInput, textProvider: req.body.textProvider });
 
         res.json({
             success: true,
             data: {
-                content: reportContent
+                content: reportContent,
+                sources
             }
         });
     } catch (error) {
         console.error("❌ Report Generation Error:", error);
-        res.status(500).json({ success: false, message: "Failed to generate report", error: error.message });
+        res.status(error.status === 400 ? 400 : 500).json({ success: false, message: "Failed to generate report", error: error.message });
     }
 };
 

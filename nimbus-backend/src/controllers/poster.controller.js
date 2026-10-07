@@ -1,145 +1,24 @@
-import { HfInference } from "@huggingface/inference";
-import { GoogleGenerativeAI } from "@google/generative-ai";
-import { User } from "../models/User.js";
 import { savePosterDraft, getActivityByUserAndType, deleteActivity } from "../services/history.service.js";
 import { uploadBufferToCloudinary } from "../utils/cloudinaryHelper.js";
-
-const buildBackgroundPrompt = (eventName = "", category = "", theme = "", colorPreference = "") => {
-    const n = (eventName + " " + category + " " + theme).toLowerCase();
-
-    let stylePrompt = "";
-
-    if (n.includes("hack") || n.includes("code") || n.includes("tech")
-        || n.includes("program") || n.includes("competitive"))
-        stylePrompt = `dark cyberpunk cityscape, deep teal and electric blue 
-    gradient, glowing circuit board patterns, binary code atmosphere, 
-    neon light trails, futuristic tech aesthetic, dramatic lighting, 
-    ultra detailed 4k`;
-
-    else if (n.includes("recruit") || n.includes("career") || n.includes("job")
-        || n.includes("hiring") || n.includes("placement"))
-        stylePrompt = `modern university student recruitment campaign background,
-    welcoming campus atmosphere, clean editorial composition, navy blue with
-    fresh mint and white accents, subtle abstract network lines and soft
-    translucent shapes, youthful academic society mood, polished Canva-style
-    visual design, gentle depth and soft light, premium but approachable,
-    balanced negative space with a clear text-safe area on the upper-left and
-    a separate quiet panel area near the lower third, no dominant centerpiece,
-    no harsh metallic geometry, no busy focal object, high quality 4k`;
-
-    else if (n.includes("cultural") || n.includes("fest") || n.includes("music")
-        || n.includes("dance") || n.includes("art") || n.includes("drama"))
-        stylePrompt = `vibrant festival atmosphere, rich jewel tone gradients,
-    purple magenta and gold bokeh, celebratory confetti blur, 
-    dynamic colorful energy, stage lights, euphoric atmosphere, 4k`;
-
-    else if (n.includes("sport") || n.includes("game") || n.includes("tournament")
-        || n.includes("championship") || n.includes("match"))
-        stylePrompt = `dramatic stadium under floodlights, bold red and orange 
-    gradient, dynamic motion blur streaks, epic competitive atmosphere, 
-    volumetric god rays, high energy, 4k`;
-
-    else if (n.includes("workshop") || n.includes("seminar") || n.includes("talk")
-        || n.includes("lecture") || n.includes("session") || n.includes("pitch"))
-        stylePrompt = `elegant minimal abstract background, soft indigo and 
-    violet gradient, geometric flowing shapes, clean professional, 
-    subtle light beam rays, knowledge and growth theme, 4k`;
-
-    else if (n.includes("social") || n.includes("networking") || n.includes("meetup")
-        || n.includes("community") || n.includes("connect"))
-        stylePrompt = `warm modern interior atmosphere, golden hour light, 
-    soft amber and cream gradients, subtle bokeh, welcoming professional 
-    networking vibe, premium lounge feel, 4k`;
-
-    else
-        stylePrompt = `beautiful abstract gradient background, deep midnight 
-    blue and royal purple, smooth flowing light shapes, modern premium, 
-    subtle geometric patterns, sophisticated, 4k`;
-
-    const colorHint = colorPreference ? `, consistent ${colorPreference} color palette` : '';
-    return `${stylePrompt}${colorHint}, 
-    poster background template only, 
-    empty clean composition with space for text overlay,
-    NO text, NO letters, NO words, NO typography, NO watermarks,
-    NO people, NO faces, NO hands, NO logos,
-    vertical portrait orientation, 4:5 aspect ratio`;
-};
-
-const NEGATIVE_PROMPT = `text, letters, words, typography, watermark, 
-signature, title, heading, caption, numbers, fonts, alphabet, writing, 
-labels, stamps, banners, people, faces, hands, bodies, portraits,
-ugly, blurry, low quality, distorted, noisy, grainy, overexposed,
-underexposed, bad composition, cluttered, messy`;
-
-// const hf = new InferenceClient(process.env.HF_API_KEY);
-const hf = new HfInference(process.env.HF_API_KEY);
-const gemini = process.env.GEMINI_API_KEY
-    ? new GoogleGenerativeAI(process.env.GEMINI_API_KEY).getGenerativeModel({ model: "gemini-2.5-flash" })
-    : null;
-
-const choosePosterDesign = async (formData, templateType, candidates = []) => {
-    if (!gemini || !Array.isArray(candidates) || candidates.length === 0) return 0;
-    const prompt = `Choose the best poster design from the supplied hardcoded candidates. Return ONLY valid JSON: {"index": number}. Never invent an index.
-User poster data: ${JSON.stringify(formData || {})}
-Template type: ${templateType || 'event'}
-Candidates: ${JSON.stringify(candidates)}`;
-    try {
-        const result = await gemini.generateContent(prompt);
-        const text = result.response.text().replace(/```json|```/g, '').trim();
-        const parsed = JSON.parse(text);
-        const index = Number(parsed.index);
-        return Number.isInteger(index) && index >= 0 && index < candidates.length ? index : 0;
-    } catch (error) {
-        console.warn("⚠️ Gemini design selection failed; rotating fallback:", error.message);
-        return candidates.length > 1 ? Math.floor(Math.random() * candidates.length) : 0;
-    }
-};
+import { generatePosterBackground } from "../services/poster.service.js";
 
 export const generatePosterController = async (req, res) => {
     try {
-        const { eventName, category, theme, formData, templateType, availableDesigns } = req.body;
-
-        const finalEventName = eventName || (formData && formData.eventName) || "";
-        const finalCategory = category || (formData && formData.eventType) || (formData && formData.category) || (req.body.templateType) || "";
-        const finalTheme = theme || (formData && formData.theme) || "";
-
-        const generatedPrompt = buildBackgroundPrompt(finalEventName, finalCategory, finalTheme, formData?.colorPreference);
-        console.log("🎨 Generated SDXL Prompt:", generatedPrompt);
-        const designIndex = await choosePosterDesign(formData, templateType, availableDesigns);
-
-        const imageBlob = await hf.textToImage({
-            model: "stabilityai/stable-diffusion-xl-base-1.0",
-            inputs: generatedPrompt,
-            parameters: {
-                negative_prompt: NEGATIVE_PROMPT,
-                num_inference_steps: 35,
-                guidance_scale: 8.0,
-                width: 832,
-                height: 1040
-            },
+        const { eventName, category, theme, formData, templateType, imageProvider } = req.body;
+        const { url, mimeType, provider } = await generatePosterBackground({
+            eventName, category, theme, formData, templateType, imageProvider
         });
-
-        const arrayBuffer = await imageBlob.arrayBuffer();
-        const buffer = Buffer.from(arrayBuffer);
-
-        // Upload to Cloudinary
-        console.log("Uploading poster to Cloudinary...");
-        const cloudinaryUrl = await uploadBufferToCloudinary(buffer, 'nimbus');
-        console.log("Poster uploaded to Cloudinary:", cloudinaryUrl);
 
         res.json({
             success: true,
             data: {
-                image: {
-                    mimeType: imageBlob.type || "image/jpeg",
-                    url: cloudinaryUrl
-                },
-                designIndex
+                image: { mimeType, url },
+                provider
             }
         });
     } catch (error) {
         console.error("❌ Poster Generation Error:", error);
-        res.status(500).json({ success: false, message: "Failed to generate poster", error: error.message });
+        res.status(error.status === 400 ? 400 : 500).json({ success: false, message: "Failed to generate poster", error: error.message });
     }
 };
 
