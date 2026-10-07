@@ -3,7 +3,7 @@ import { Stage, Layer, Group, Rect, Circle, Line, Transformer } from 'react-konv
 import { DESIGN_W, DESIGN_H, setDesignHeight } from './engine/constants';
 import { contentPaletteFor, linear } from './engine/color';
 import { loadPosterFonts, familiesForPalette } from './engine/fonts';
-import { buildAutoPalette } from './engine/autoPalette';
+import { buildAutoPalette, buildBrandPalette } from './engine/autoPalette';
 import { getPalette } from './data/palettes';
 import { getBackground } from './layers/backgrounds';
 import { getDecoration } from './layers/decorations';
@@ -67,11 +67,14 @@ const PosterStage = forwardRef(({ recipe, data, aiBackgroundImage, width = 600, 
     useEffect(() => { setPhoto(aiBackgroundImage ? undefined : null); }, [aiBackgroundImage]);
 
     const palette = useMemo(() => {
+        const fonts = { titleFonts: [custom.titleFont || 'Montserrat', 'Outfit'] };
         const base = recipe.paletteId === 'auto'
-            ? buildAutoPalette(photo?.hues, { titleFonts: [custom.titleFont || 'Montserrat', 'Outfit'] })
-            : getPalette(recipe.paletteId);
+            ? buildAutoPalette(photo?.hues, fonts)
+            : recipe.paletteId === 'brand'
+                ? buildBrandPalette(custom.brandColors || [], fonts)
+                : getPalette(recipe.paletteId);
         return custom.titleFont ? { ...base, titleFonts: [custom.titleFont, ...(base.titleFonts || [])] } : base;
-    }, [recipe.paletteId, photo, custom.titleFont]);
+    }, [recipe.paletteId, photo, custom.titleFont, custom.brandColors]);
 
     const contentPalette = useMemo(
         () => ({ ...contentPaletteFor(palette, typeof photo?.luma === 'number' ? photo.luma < 0.6 : undefined), textScale: custom.textScale || 1 }),

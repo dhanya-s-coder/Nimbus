@@ -278,3 +278,17 @@ export const getDesignRecipes = (templateType) =>
 export const getDesignCount = (templateType) => {
     return (DESIGN_POOLS[templateType] || DESIGN_POOLS.event).length;
 };
+
+/** Palette for a design honouring the user's colour preference (Vibrant / Cool Blues / ...), else a random one. */
+export const paletteFor = (design, preference) => {
+    const pref = String(preference || '').toLowerCase();
+    const map = {
+        vibrant: ['sunset', 'crimson', 'rose', 'neon', 'electric'],
+        'cool blues': ['blue', 'ocean', 'indigo', 'slate', 'cyber'],
+        'warm oranges': ['warm', 'amber', 'sunset', 'rose', 'gold'],
+        'modern purple': ['purple', 'violet', 'indigo', 'rose'],
+    };
+    const words = map[pref] || [];
+    const hit = design.palettes.find((id) => words.some((w) => id.toLowerCase().includes(w)));
+    return hit || design.palettes[Math.floor(Math.random() * design.palettes.length)];
+};
