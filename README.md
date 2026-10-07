@@ -82,8 +82,11 @@ The Dashboard is your control center.
 6. **Export**: Once generated, use the **Download** button to download a high-quality PNG.
 
 #### Poster Generation Agent
+**Fastest way:** on the Dashboard type one sentence ("Hackathon on 14-15 Feb at the Main Auditorium, Rs 40,000 prizes") and click **Create poster**. Nimbus picks the template, extracts the details, designs a background that follows your Knowledge Base and style wishes, and lays it out.
+
+**Step by step:**
 1. **Template**: Choose from **Academic**, **Recruitment**, **Event**, **Hackathon** or **Announcement**.
-2. **Details**: Enter the title (required) and any other fields. Optionally click **Autofill with Nimbus** to fill empty fields from your Knowledge Base.
+2. **Details**: Enter a title and/or describe your event in your own words. Optional *Style wishes* ("elegant dark blue with golden accents") steer the background and colours. Open **More details** for every field (speaker, logos, QR...).
 3. **Generation**: Click **Generate Poster**.
 4. **Customize** (panel under the poster): *Edit* (drag / resize / add text), *Layouts*, *Colors*, *Photo*, *Text*, *Size*. **Shuffle** tries another layout and palette.
 5. **Auditing**: **Save Draft** to continue later, **Finalise** to store it as final.
