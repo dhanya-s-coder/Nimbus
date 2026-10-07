@@ -35,11 +35,12 @@ In an academic environment, administrative work often consumes a significant por
 - **Export**: Generated email content can be exported to the user's local system.
 
 ### Poster Generation Agent
-- **AI Design Director**: Instead of static templates, a Gemini-powered "Design Director" analyzes user inputs (event name, category) to construct tailored styling specifications, color palettes, and typography decisions.
-- **SDXL Background Generation**: Guided by Gemini's dynamic prompt output, **Stable Diffusion XL** (via Hugging Face) generates high-quality, perfectly-themed background imagery.
-- **Dynamic Modular Frontend**: A meticulously crafted React rendering engine (`PosterOverlay`) seamlessly overlays the Gemini-dictated design elements onto the SDXL image, presenting an instantly download-ready final poster.
-- **Audits**: All generated posters are saved as drafts or finals, and are tracked accordingly.
-- **Export**: Generated poster content can be exported to the user's local system as a high-quality PNG.
+- **Canvas renderer (react-konva)**: Posters are drawn on a real canvas (1080-wide logical, exported at 2160 px) instead of being screenshotted from the DOM, so what you see is exactly what you download. 5 templates x 7 layouts x 19 palettes, with self-hosted fonts.
+- **AI backgrounds**: Stable Diffusion XL (Hugging Face) by default, switchable to Pollinations, Gemini image, Imagen or Replicate (see *AI providers*). Text colours adapt to the photo's brightness; "Match photo" builds the colour scheme from the photo itself.
+- **Autofill with Nimbus (RAG)**: Fills the still-empty fields from your Knowledge Base (club details, past events, contacts) without inventing facts.
+- **Customize like a designer**: layout gallery with live thumbnails + Shuffle, palettes, photo darkness / your own photo, title font and size, size presets (Post 4:5, Square, Story 9:16, A4).
+- **Direct editing**: drag, resize, hide and restore any element, add your own text boxes, snap guides, arrow-key nudging, undo / redo.
+- **Export**: PNG, JPG or PDF. Posters are saved with their edits and a thumbnail in History.
 
 ### Logo Generation Agent
 - **Brand Identity**: User can define the brand name, tagline, and preferred style (Minimal, Modern, Bold, etc.) to guide logo creation.
@@ -81,11 +82,15 @@ The Dashboard is your control center.
 6. **Export**: Once generated, use the **Download** button to download a high-quality PNG.
 
 #### Poster Generation Agent
-1. **Template**: Choose from **Academic**, **Hackathon**, **Event**, etc.
-2. **Details**: Fill in the form with event name, date, venue, and description.
+1. **Template**: Choose from **Academic**, **Recruitment**, **Event**, **Hackathon** or **Announcement**.
+2. **Details**: Enter the title (required) and any other fields. Optionally click **Autofill with Nimbus** to fill empty fields from your Knowledge Base.
 3. **Generation**: Click **Generate Poster**.
-4. **Auditing**: Click **Save Draft** to store it for later and **Finalize** to store it with status as final.
-5. **Export**: Once generated, use the **Export** button to download a high-quality PNG.
+4. **Customize** (panel under the poster): *Edit* (drag / resize / add text), *Layouts*, *Colors*, *Photo*, *Text*, *Size*. **Shuffle** tries another layout and palette.
+5. **Auditing**: **Save Draft** to continue later, **Finalise** to store it as final.
+6. **Export**: **Download PNG**, **JPG** or **PDF**.
+
+#### Knowledge Base
+Open **Knowledge Base** in the sidebar and paste facts Nimbus should use (brand colours, past events, contacts). They power poster autofill and ground reports and emails ("Sources used" is shown under the output).
 
 #### Logo Generation Agent
 1. **Identity**: provide the **Brand Name** and an optional **Tagline**.
@@ -123,11 +128,11 @@ The Dashboard is your control center.
 - **JWT**: Secure authentication using access and refresh tokens
 
 ### AI & Services
-- **Google Gemini API**: Email/report content generation, and sophisticated "Design Director" orchestration for poster styling parameters.
-- **Hugging Face Inference**: Stable Diffusion XL for background poster and logo image generation.
-- **Cloudinary**: Media hosting for generated posters and logos.
+- **Provider layer** (`nimbus-backend/src/services/ai`): text via Google Gemini or Anthropic Claude; images via Hugging Face SDXL, Pollinations, Gemini image, Imagen or Replicate. Pick the active provider in `.env`; optional automatic failover.
+- **RAG**: Supabase Postgres + pgvector, Gemini embeddings (768-d), hybrid vector + full-text search with a relevance gate.
+- **Poster rendering**: react-konva / Konva on the client, jsPDF for PDF export.
+- **Cloudinary**: Media hosting for generated posters, previews and logos.
 - **Nodemailer**: SMTP-based email delivery.
-
 
 ---
 
@@ -148,26 +153,13 @@ The Dashboard is your control center.
     ```bash
     npm install
     ```
-3.  Create a `.env` file and and write follwing credentials in it:
-    ```env
-    PORT=5000
-    GEMINI_API_KEY=
-    HF_API_KEY=
-    MONGO_URI=
-    EMAIL_USER=
-    EMAIL_PASS=
-    ACCESS_TOKEN_SECRET=
-    REFRESH_TOKEN_SECRET=
-    ACCESS_TOKEN_EXPIRY=
-    REFRESH_TOKEN_EXPIRY=
-    CLOUDINARY_CLOUD_NAME=
-    CLOUDINARY_API_KEY=
-    CLOUDINARY_API_SECRET=
-    ```
+3.  Copy `.env.example` to `.env` and fill it in (Mongo, JWT secrets, SMTP, Cloudinary, `GEMINI_API_KEY`, an image provider key such as `HF_API_KEY` or `POLLINATIONS_API_KEY`, and optionally `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY`). Every setting is documented in the file.
+3b. **Knowledge Base (optional)**: create a Supabase project, then run `nimbus-backend/supabase/migrations/001_rag.sql` once in the Supabase SQL Editor. Without Supabase the app works normally, just without retrieval.
 4.  Start the server:
     ```bash
     npm run dev
     ```
+5.  Run the tests: `npm test`
 
 ### Frontend Installation
 1.  Navigate to the frontend folder:
