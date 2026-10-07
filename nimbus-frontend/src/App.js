@@ -1,3 +1,4 @@
+import React from "react";
 import "./App.css";
 import { Routes, Route } from 'react-router-dom';
 import Home from "./components/home/Home";
@@ -13,9 +14,14 @@ import EmailGenerator from "./components/tools/EmailGenerator";
 import LogoIdeas from "./components/tools/LogoGenerator";
 import PosterGenerator from "./components/tools/PosterGenerator";
 import ReportGenerator from "./components/tools/ReportGenerator";
+import KnowledgeBase from "./components/tools/KnowledgeBase";
 import Activity from "./components/tools/history/Activity";
 import { HistoryProvider } from "./context/HistoryContext";
 import ProtectedLayout from './components/zprotect/ProtectedLayout'
+
+const DevPreview = process.env.NODE_ENV !== 'production'
+  ? React.lazy(() => import('./components/tools/poster-konva/DevPreview'))
+  : null;
 
 function App() {
   return (
@@ -27,6 +33,8 @@ function App() {
         <Route path="/signup" element={<PublicRoute element={<Signup />} />} />
         <Route path="/forgot-password" element={<PublicRoute element={<ForgotPassword />} />} />
         <Route path="/verify-otp" element={<PublicRoute element={<VerifyOTP />} />} />
+
+        {DevPreview && <Route path="/dev/poster" element={<React.Suspense fallback={null}><DevPreview /></React.Suspense>} />}
 
         {/* Protected Routes*/}
         <Route element={
@@ -42,6 +50,7 @@ function App() {
           <Route path="/poster-generator" element={<PosterGenerator />} />
           <Route path="/logo-generator" element={<LogoIdeas />} />
           <Route path="/report-generator" element={<ReportGenerator />} />
+          <Route path="/knowledge" element={<KnowledgeBase />} />
           <Route path="/activity" element={<Activity />} />
         </Route>
       </Routes>

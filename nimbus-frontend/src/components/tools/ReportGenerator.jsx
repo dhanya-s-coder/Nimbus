@@ -8,6 +8,7 @@ import RecentActivity from "../common/RecentActivity";
 import { FiFileText, FiSave } from "react-icons/fi";
 
 export default function ReportGenerator() {
+    const [sources, setSources] = useState([]);
     const { refreshHistory } = useHistory();
     const location = useLocation();
 
@@ -55,6 +56,7 @@ export default function ReportGenerator() {
         }
 
         setReportContent("");
+        setSources([]);
         setIsGenerating(true);
         if (editorRef.current) editorRef.current.innerText = "";
 
@@ -71,6 +73,7 @@ export default function ReportGenerator() {
             const data = await response.json();
 
             if (data.success && data.data?.content) {
+                setSources(data.data.sources || []);
                 streamText(data.data.content);
                 toast.success(data.message || "Report generated!");
             } else {
@@ -242,6 +245,12 @@ export default function ReportGenerator() {
                                 </div>
                             )}
                         </div>
+
+                        {sources.length > 0 && (
+                            <p style={{ fontSize: '0.75rem', opacity: 0.7, margin: '0.5rem 0 0' }}>
+                                🧠 Sources used: {sources.map((s) => s.title).join(', ')}
+                            </p>
+                        )}
 
                         <div className="tool-preview-actions">
                             <button className="tool-btn-secondary" onClick={() => handleSave('draft')}>

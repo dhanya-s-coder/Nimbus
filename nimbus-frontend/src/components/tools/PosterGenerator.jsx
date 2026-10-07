@@ -1,5 +1,4 @@
-import React, { useState, useEffect } from 'react';
-import html2canvas from 'html2canvas';
+import React, { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { fetchWithAuth, API_ENDPOINTS } from '../../api/config';
 import { toast } from '../../utils/toast';
@@ -8,9 +7,10 @@ import { useHistory } from '../../context/HistoryContext';
 import RecentActivity from '../common/RecentActivity';
 import './tools.css';
 
-import PosterCompositor from './poster-templates/PosterCompositor';
-import { getDesignByIndex, getDesignCandidates, getDesignCount } from './poster-templates/autoDesigner';
-import { normalizeFormData } from './poster-templates/normalizeFormData';
+import PosterStage from './poster-konva/PosterStage';
+import { exportPosterBlob, downloadBlob } from './poster-konva/engine/exportPoster';
+import { getDesignByIndex, getDesignCount } from './poster-konva/data/autoDesigner';
+import { normalizeFormData } from './poster-konva/data/normalizeFormData';
 
 const TEMPLATES = {
     academic: {
@@ -18,6 +18,7 @@ const TEMPLATES = {
         fields: [
             { id: 'eventLogo', label: 'Event Logo (Optional)', type: 'file' },
             { id: 'speakerPhoto', label: 'Speaker Photo (Optional)', type: 'file' },
+            { id: 'speakerShape', label: 'Speaker Photo Shape', type: 'select', options: ['Hexagon', 'Circle', 'Diamond', 'Square'] },
             { id: 'qr1Image', label: 'Registration QR (Optional)', type: 'file' },
             { id: 'eventTitle', label: 'Event Title', type: 'text', required: true, placeholder: 'e.g., Research Symposium 2024' },
             { id: 'speakerName', label: 'Speaker Name', type: 'text', placeholder: 'e.g., Dr. John Smith' },
@@ -107,6 +108,9 @@ const PosterGenerator = () => {
     const [posterStyle, setPosterStyle] = useState(null);   // ← FIX: was missing
     const [error, setError] = useState(null);
     const [isSaving, setIsSaving] = useState(false);
+    const stageRef = useRef(null);
+    const [isAutofilling, setIsAutofilling] = useState(false);
+    const [autofillSources, setAutofillSources] = useState(null);
 
     useEffect(() => {
         if (location.state?.posterData) {
@@ -168,6 +172,38 @@ const PosterGenerator = () => {
         return requiredFields.every(f => formData[f.id]?.trim());
     };
 
+    // RAG: fill the still-empty text fields from the knowledge base (never overwrites what the user typed).
+    const handleAutofill = async () => {
+        if (!isFormValid()) {
+            toast.warning("Enter the required title first, then autofill the rest.");
+            return;
+        }
+        setIsAutofilling(true);
+        try {
+            const response = await fetchWithAuth(API_ENDPOINTS.RAG.POSTER_CONTENT, {
+                method: 'POST',
+                body: JSON.stringify({ templateType: selectedTemplate, formData })
+            });
+            const data = await response.json();
+            if (!response.ok || !data.success) throw new Error(data.error || data.message || 'Autofill failed');
+            const { fields = {}, colorPreference, sources = [], grounded } = data.data;
+            const hasColorField = currentTemplate.fields.some(f => f.id === 'colorPreference');
+            setFormData(prev => {
+                const next = { ...prev };
+                Object.entries(fields).forEach(([k, v]) => { if (!String(next[k] || '').trim()) next[k] = v; });
+                if (colorPreference && hasColorField && !next.colorPreference) next.colorPreference = colorPreference;
+                return next;
+            });
+            setAutofillSources(sources);
+            const n = Object.keys(fields).length;
+            toast.success(n ? `Filled ${n} field${n === 1 ? '' : 's'}${grounded === false ? ' (knowledge base unavailable)' : ''}` : "Nothing left to fill");
+        } catch (err) {
+            toast.error(err.message || "Autofill failed");
+        } finally {
+            setIsAutofilling(false);
+        }
+    };
+
     const handleGenerate = async () => {
         if (!isFormValid()) {
             toast.warning("Please fill in all required fields first.");
@@ -185,8 +221,7 @@ const PosterGenerator = () => {
                 method: 'POST',
                 body: JSON.stringify({
                     templateType: selectedTemplate,
-                    formData,
-                    availableDesigns: getDesignCandidates(selectedTemplate)
+                    formData
                 })
             });
 
@@ -278,34 +313,17 @@ const PosterGenerator = () => {
             toast.info("Please generate a poster first to download it.");
             return;
         }
-        const node = document.getElementById('poster-export-node');
-        if (!node) return;
-        if (document.fonts?.ready) await document.fonts.ready;
-        const images = Array.from(node.querySelectorAll('img'));
-        await Promise.all(images.map((img) => {
-            if (img.complete) return img.decode?.().catch(() => {}) || Promise.resolve();
-            return new Promise((resolve) => {
-                img.addEventListener('load', resolve, { once: true });
-                img.addEventListener('error', resolve, { once: true });
-            });
-        }));
-        const canvas = await html2canvas(node, {
-            scale: 3,
-            useCORS: true,
-            allowTaint: false,
-            backgroundColor: null,
-            logging: false,
-        });
-        const dataUrl = canvas.toDataURL('image/png');
-        const a = document.createElement('a');
-        a.href = dataUrl;
         const posterTitle = formData.eventTitle || formData.eventName ||
             formData.announcementTitle || formData.recruitmentTitle || 'Untitled Poster';
-        a.download = `Poster: ${posterTitle} (By Nimbus).png`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        toast.success("Poster download started!");
+        const filename = `Poster: ${posterTitle} (By Nimbus).png`;
+
+        try {
+            const blob = await exportPosterBlob(stageRef.current, { outputWidth: 2160 });
+            downloadBlob(blob, filename);
+            toast.success("Poster download started!");
+        } catch (err) {
+            toast.error(err.message || "Failed to export poster");
+        }
     };
 
     const renderField = (field) => {
@@ -408,6 +426,21 @@ const PosterGenerator = () => {
 
                         <section className="tool-actions">
                             <button
+                                className="tool-btn-secondary"
+                                style={{ width: '100%', marginBottom: '0.6rem', justifyContent: 'center' }}
+                                onClick={handleAutofill}
+                                disabled={isAutofilling || isGenerating}
+                            >
+                                {isAutofilling ? 'Reading your knowledge base...' : '🧠 Autofill with Nimbus'}
+                            </button>
+                            {autofillSources && (
+                                <p style={{ fontSize: '0.75rem', opacity: 0.7, margin: '0 0 0.6rem' }}>
+                                    {autofillSources.length
+                                        ? `Used: ${autofillSources.map(s => s.title).join(', ')}`
+                                        : 'No matching knowledge found — add some in Knowledge Base for better results.'}
+                                </p>
+                            )}
+                            <button
                                 className="tool-btn-generate"
                                 onClick={handleGenerate}
                                 disabled={isGenerating}
@@ -459,14 +492,12 @@ const PosterGenerator = () => {
                                 <>
                                     <div style={{ display: 'flex', justifyContent: 'center', width: '100%', overflow: 'auto', borderRadius: '12px', paddingBottom: '10px' }}>
                                         <div style={{ flexShrink: 0, width: '600px' }}>
-                                            <PosterCompositor
-                                                skeletonId={posterStyle.skeleton}
-                                                backgroundId={posterStyle.background}
-                                                frameId={posterStyle.frame}
-                                                decorationId={posterStyle.decoration}
-                                                paletteId={posterStyle.paletteId}
+                                            <PosterStage
+                                                ref={stageRef}
+                                                recipe={posterStyle}
                                                 data={normalizeFormData(selectedTemplate, formData)}
                                                 aiBackgroundImage={generatedImage}
+                                                width={600}
                                             />
                                         </div>
                                     </div>

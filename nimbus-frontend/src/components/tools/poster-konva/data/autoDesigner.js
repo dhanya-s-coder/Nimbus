@@ -232,53 +232,7 @@ const DESIGN_POOLS = {
     ],
 };
 
-const usageTracker = {};
 const lastGeminiSelection = {};
-
-/**
- * Pick the next design from the curated pool for a template type.
- * Cycles through all designs before repeating.
- *
- * @param {string} templateType - e.g., 'academic', 'recruitment', 'event', 'hackathon', 'announcement'
- * @param {object} [hints] - Optional hints to influence selection, e.g. { hasSpeakerPhoto: true }
- * @returns {{ skeleton, background, frame, decoration, paletteId }}
- */
-export const getNextDesign = (templateType, hints = {}) => {
-    const pool = DESIGN_POOLS[templateType] || DESIGN_POOLS.event;
-
-    if (hints.hasSpeakerPhoto) {
-        const splitDesigns = pool.filter(d => d.skeleton === 'split-panel');
-        if (splitDesigns.length > 0) {
-            const design = splitDesigns[0];
-            const paletteId = design.palettes[Math.floor(Math.random() * design.palettes.length)];
-            return {
-                skeleton: design.skeleton,
-                background: design.background,
-                frame: design.frame,
-                decoration: design.decoration,
-                paletteId,
-            };
-        }
-    }
-
-    if (usageTracker[templateType] === undefined) {
-        usageTracker[templateType] = 0;
-    } else {
-        usageTracker[templateType] = (usageTracker[templateType] + 1) % pool.length;
-    }
-
-    const design = pool[usageTracker[templateType]];
-    const paletteId = design.palettes[Math.floor(Math.random() * design.palettes.length)];
-
-    return {
-        skeleton: design.skeleton,
-        background: design.background,
-        frame: design.frame,
-        decoration: design.decoration,
-        paletteId,
-    };
-};
-
 
 export const getDesignByIndex = (templateType, index, hints = {}) => {
     const pool = DESIGN_POOLS[templateType] || DESIGN_POOLS.event;
@@ -309,28 +263,6 @@ export const getDesignByIndex = (templateType, index, hints = {}) => {
     };
 };
 
-// Public, compact description used by the backend design selector.
-// The actual visual elements remain hardcoded in this file and the skins.
-export const getDesignCandidates = (templateType) => {
-    const pool = DESIGN_POOLS[templateType] || DESIGN_POOLS.event;
-    return pool.map((design, index) => ({
-        index,
-        skeleton: design.skeleton,
-        background: design.background,
-        frame: design.frame,
-        decoration: design.decoration,
-        palettes: design.palettes,
-    }));
-};
-
-
 export const getDesignCount = (templateType) => {
     return (DESIGN_POOLS[templateType] || DESIGN_POOLS.event).length;
 };
-
-
-export const resetDesignTracker = (templateType) => {
-    delete usageTracker[templateType];
-};
-
-export default { getNextDesign, getDesignByIndex, getDesignCandidates, getDesignCount, resetDesignTracker };

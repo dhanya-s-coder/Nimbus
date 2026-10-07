@@ -9,6 +9,7 @@ import { FiMail, FiClock } from "react-icons/fi";
 import "../dashboard/dashboard.css"
 
 export default function EmailGenerator() {
+    const [sources, setSources] = useState([]);
     const { refreshHistory } = useHistory();
     const location = useLocation();
 
@@ -53,6 +54,7 @@ export default function EmailGenerator() {
 
         setDraft("");
         setIsGenerating(true);
+        setSources([]);
         if (editorRef.current) editorRef.current.innerText = "";
 
         try {
@@ -66,6 +68,7 @@ export default function EmailGenerator() {
             const data = await response.json();
 
             if (data.success && data.data?.emailBody) {
+                setSources(data.data.sources || []);
                 streamText(data.data.emailBody);
             } else {
                 setDraft(data.message || "Error generating email.");
@@ -281,6 +284,12 @@ export default function EmailGenerator() {
                                 </div>
                             )}
                         </div>
+
+                        {sources.length > 0 && (
+                            <p style={{ fontSize: '0.75rem', opacity: 0.7, margin: '0.5rem 0 0' }}>
+                                🧠 Sources used: {sources.map((s) => s.title).join(', ')}
+                            </p>
+                        )}
 
                         <div className="tool-preview-actions">
                             <button className="tool-btn-secondary" onClick={handleSaveDraft}>

@@ -37,6 +37,12 @@ export const API_ENDPOINTS = {
     HISTORY: `${API_BASE_URL}/api/poster/history`,
     ACTIVITY: `${API_BASE_URL}/api/poster/activity`,
   },
+  RAG: {
+    INGEST: `${API_BASE_URL}/api/rag/ingest`,
+    SEARCH: `${API_BASE_URL}/api/rag/search`,
+    SOURCES: `${API_BASE_URL}/api/rag/sources`,
+    POSTER_CONTENT: `${API_BASE_URL}/api/generate/poster-content`,
+  },
   REPORT: {
     GENERATE: `${API_BASE_URL}/api/report/generate`,
     SAVE: `${API_BASE_URL}/api/report/save`,

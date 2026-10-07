@@ -31,6 +31,8 @@ const ProtectedLayout = () => {
                 return 'Logo Generator';
             case '/report-generator':
                 return 'Report Generator';
+            case '/knowledge':
+                return 'Knowledge Base';
             case '/activity':
                 return 'Recent Activity';
             default:

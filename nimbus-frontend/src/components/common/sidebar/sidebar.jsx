@@ -4,7 +4,7 @@ import { useAuth } from "../../../context/AuthContext";
 import Logo from "../../../assets/Logo";
 import { toast } from "../../../utils/toast";
 import "./sidebar.css";
-import { FiMail, FiImage, FiLogOut, FiClock, FiGrid, FiEdit3, FiUser, FiFileText } from "react-icons/fi";
+import { FiMail, FiImage, FiLogOut, FiClock, FiGrid, FiEdit3, FiUser, FiFileText, FiDatabase } from "react-icons/fi";
 
 const Sidebar = ({ activePage }) => {
   const navigate = useNavigate();
@@ -21,6 +21,7 @@ const Sidebar = ({ activePage }) => {
     { id: "poster-generator", label: "Poster Generator", icon: <FiImage />, path: "/poster-generator" },
     { id: "logo-generator", label: "Logo Generator", icon: <FiEdit3 />, path: "/logo-generator" },
     { id: "report-generator", label: "Report Generator", icon: <FiFileText />, path: "/report-generator" },
+    { id: "knowledge", label: "Knowledge Base", icon: <FiDatabase />, path: "/knowledge" },
     { id: "history", label: "History", icon: <FiClock />, path: "/activity" },
     { id: "profile", label: "My Profile", icon: <FiUser />, path: "/profile" },
   ];
