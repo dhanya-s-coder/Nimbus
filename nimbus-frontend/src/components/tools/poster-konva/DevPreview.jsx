@@ -27,6 +27,12 @@ const DevPreview = () => {
         ...(q.get('b') ? { background: q.get('b') } : {}),
         ...(q.get('f') ? { frame: q.get('f') } : {}),
         ...(q.get('d') ? { decoration: q.get('d') } : {}),
+        custom: {
+            ...(q.get('size') ? { size: q.get('size') } : {}),
+            ...(q.get('font') ? { titleFont: q.get('font') } : {}),
+            ...(q.get('scale') ? { textScale: Number(q.get('scale')) } : {}),
+            ...(q.get('strength') ? { photoStrength: Number(q.get('strength')) } : {}),
+        },
     };
     const form = { ...SAMPLES[t], ...(q.get('photo') ? { speakerPhoto: BG } : {}), ...(q.get('shape') ? { speakerShape: q.get('shape') } : {}),
         ...(q.get('qr') ? { qr1Image: BG } : {}), ...(q.get('long') ? { [Object.keys(SAMPLES[t])[0]]: 'An Extraordinarily Long Event Title That Keeps Going And Going For Testing' } : {}) };

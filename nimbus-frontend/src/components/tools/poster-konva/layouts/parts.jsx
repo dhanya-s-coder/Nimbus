@@ -24,7 +24,7 @@ export const titleBlock = ({
     if (!text) return null;
     const t = upper ? text.toUpperCase() : text;
     const o = { fontFamily: font, fontStyle: weight, lineHeight, letterSpacing };
-    const size = fitFontSize(t, { width: w, maxSize: maxSize * titleScale(font), minSize, maxLines, ...o });
+    const size = fitFontSize(t, { width: w, maxSize: maxSize * titleScale(font) * (palette.textScale || 1), minSize, maxLines, ...o });
     const h = textHeight(t, { width: w, fontSize: size, ...o });
     return {
         h, mb, key, size,

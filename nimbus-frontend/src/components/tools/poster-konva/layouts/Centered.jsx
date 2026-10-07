@@ -94,7 +94,7 @@ const Centered = ({ data, palette }) => {
         const rowW = CW * 0.88;
         const tx = PAD_X + (CW - rowW) / 2 + av + 18;
         const tw = rowW - av - 18;
-        const tSize = fitFontSize((title || '').toUpperCase(), { width: tw, maxSize: titleSizePx((title || '').length) * 0.8, minSize: 14, maxLines: 5, fontFamily: titleFont, fontStyle: '800', lineHeight: 1, letterSpacing: -0.5 });
+        const tSize = fitFontSize((title || '').toUpperCase(), { width: tw, maxSize: titleSizePx((title || '').length) * 0.8 * (palette.textScale || 1), minSize: 14, maxLines: 5, fontFamily: titleFont, fontStyle: '800', lineHeight: 1, letterSpacing: -0.5 });
         const tH = title ? textHeight((title || '').toUpperCase(), { width: tw, fontSize: tSize, fontFamily: titleFont, fontStyle: '800', lineHeight: 1, letterSpacing: -0.5 }) : 0;
         const nameH = speakerName ? rem(0.9) * 1.2 + (speakerDesignation ? 3 + rem(0.6) * 1.2 : 0) : 0;
         const colH = tH + (title && speakerName ? 8 : 0) + nameH;
@@ -110,7 +110,7 @@ const Centered = ({ data, palette }) => {
         ) });
     } else if (title) {
         const up = title.toUpperCase();
-        const size = fitFontSize(up, { width: CW, maxSize: titleSizePx(title.length) * titleScale(titleFont), minSize: 16, maxLines: 3, fontFamily: titleFont, fontStyle: '800', lineHeight: 1, letterSpacing: -0.5 });
+        const size = fitFontSize(up, { width: CW, maxSize: titleSizePx(title.length) * titleScale(titleFont) * (palette.textScale || 1), minSize: 16, maxLines: 3, fontFamily: titleFont, fontStyle: '800', lineHeight: 1, letterSpacing: -0.5 });
         const h = textHeight(up, { width: CW, fontSize: size, fontFamily: titleFont, fontStyle: '800', lineHeight: 1, letterSpacing: -0.5 });
         blocks.push({ h, mb: 10, key: 'title', render: (y) => (
             <Txt text={up} x={PAD_X} y={y} width={CW} align="center" fontSize={size} fontFamily={titleFont} fontStyle="800" lineHeight={1} letterSpacing={-0.5}

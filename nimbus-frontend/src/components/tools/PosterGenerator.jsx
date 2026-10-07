@@ -8,8 +8,10 @@ import RecentActivity from '../common/RecentActivity';
 import './tools.css';
 
 import PosterStage from './poster-konva/PosterStage';
-import { exportPosterBlob, downloadBlob } from './poster-konva/engine/exportPoster';
-import { getDesignByIndex, getDesignCount } from './poster-konva/data/autoDesigner';
+import PosterCustomizer from './poster-konva/PosterCustomizer';
+import { SIZES, DEFAULT_SIZE } from './poster-konva/engine/constants';
+import { exportPosterBlob, exportPosterPdf, downloadBlob, fileToPhotoDataUrl } from './poster-konva/engine/exportPoster';
+import { getDesignByIndex, getDesignCount, getDesignRecipes } from './poster-konva/data/autoDesigner';
 import { normalizeFormData } from './poster-konva/data/normalizeFormData';
 
 const TEMPLATES = {
@@ -110,6 +112,14 @@ const PosterGenerator = () => {
     const [isSaving, setIsSaving] = useState(false);
     const stageRef = useRef(null);
     const [isAutofilling, setIsAutofilling] = useState(false);
+    const [isBgBusy, setIsBgBusy] = useState(false);
+    // keep the whole poster (and the Customize panel under it) on screen: fit the preview to the window height
+    const [viewportH, setViewportH] = useState(() => window.innerHeight);
+    useEffect(() => {
+        const onResize = () => setViewportH(window.innerHeight);
+        window.addEventListener('resize', onResize);
+        return () => window.removeEventListener('resize', onResize);
+    }, []);
     const [autofillSources, setAutofillSources] = useState(null);
 
     useEffect(() => {
@@ -148,12 +158,17 @@ const PosterGenerator = () => {
     }, [location.state]);
 
     useEffect(() => {
-        if (generatedImage && posterStyle) {
-            localStorage.setItem('nimbus-last-poster', JSON.stringify({ selectedTemplate, formData, generatedImage, posterStyle }));
+        // uploaded photos are data URLs (too big for localStorage) - only remember hosted images
+        if (generatedImage && posterStyle && !generatedImage.startsWith('data:')) {
+            try {
+                localStorage.setItem('nimbus-last-poster', JSON.stringify({ selectedTemplate, formData, generatedImage, posterStyle }));
+            } catch { /* quota exceeded: ignore */ }
         }
     }, [generatedImage, posterStyle, selectedTemplate, formData]);
 
     const currentTemplate = TEMPLATES[selectedTemplate];
+    const designH = (SIZES[posterStyle?.custom?.size] || SIZES[DEFAULT_SIZE]).h;
+    const previewWidth = Math.round(Math.max(300, Math.min(600, ((viewportH - 260) * 600) / designH)));
 
     const handleTemplateChange = (templateId) => {
         setSelectedTemplate(templateId);
@@ -210,6 +225,7 @@ const PosterGenerator = () => {
             return;
         }
 
+        const keepCustom = posterStyle?.custom;   // size / font / colours survive regeneration
         setIsGenerating(true);
         setError(null);
         setGeneratedImage(null);
@@ -260,7 +276,7 @@ const PosterGenerator = () => {
             const design = getDesignByIndex(selectedTemplate, selectedIndex, {
                 colorPreference: formData.colorPreference,
             });
-            setPosterStyle(design);
+            setPosterStyle(keepCustom ? { ...design, custom: keepCustom } : design);
 
             toast.success(data.message || "Poster generated successfully!");
         } catch (err) {
@@ -269,6 +285,49 @@ const PosterGenerator = () => {
         } finally {
             setIsGenerating(false);
             setLoadingStage('');
+        }
+    };
+
+    // -- Customize panel actions --------------------------------------------
+    const updateCustom = (patch) => setPosterStyle((p) => (p ? { ...p, custom: { ...(p.custom || {}), ...patch } } : p));
+    const updateRecipe = (recipe) => setPosterStyle((p) => ({ ...recipe, custom: p?.custom }));
+
+    const handleShuffle = () => {
+        const designs = getDesignRecipes(selectedTemplate);
+        const same = (d) => d.skeleton === posterStyle?.skeleton && d.background === posterStyle?.background && d.frame === posterStyle?.frame && d.decoration === posterStyle?.decoration;
+        const others = designs.filter((d) => !same(d));
+        const pool = others.length ? others : designs;
+        const pick = pool[Math.floor(Math.random() * pool.length)];
+        const palettes = pick.palettes.filter((id) => id !== posterStyle?.paletteId);
+        const choices = palettes.length ? palettes : pick.palettes;
+        const paletteId = choices[Math.floor(Math.random() * choices.length)];
+        setPosterStyle((p) => ({ ...pick, paletteId, custom: p?.custom }));
+    };
+
+    const handleNewBackground = async () => {
+        setIsBgBusy(true);
+        try {
+            const response = await fetchWithAuth(API_ENDPOINTS.POSTER.GENERATE, {
+                method: 'POST',
+                body: JSON.stringify({ templateType: selectedTemplate, formData })
+            });
+            const data = await response.json();
+            if (!response.ok || !data.success) throw new Error(data.error || data.message || 'Could not generate a background');
+            setGeneratedImage(data.data.image.url);
+            toast.success('New background ready');
+        } catch (err) {
+            toast.error(err.message);
+        } finally {
+            setIsBgBusy(false);
+        }
+    };
+
+    const handleUploadPhoto = async (file) => {
+        try {
+            setGeneratedImage(await fileToPhotoDataUrl(file));
+            toast.success('Photo applied');
+        } catch (err) {
+            toast.error(err.message || 'Could not use that photo');
         }
     };
 
@@ -308,18 +367,22 @@ const PosterGenerator = () => {
         }
     };
 
-    const handleDownload = async () => {
+    const handleDownload = async (format = 'png') => {
         if (!generatedImage) {
             toast.info("Please generate a poster first to download it.");
             return;
         }
         const posterTitle = formData.eventTitle || formData.eventName ||
             formData.announcementTitle || formData.recruitmentTitle || 'Untitled Poster';
-        const filename = `Poster: ${posterTitle} (By Nimbus).png`;
-
+        const base = `Poster - ${posterTitle} (By Nimbus)`;
         try {
-            const blob = await exportPosterBlob(stageRef.current, { outputWidth: 2160 });
-            downloadBlob(blob, filename);
+            if (format === 'pdf') {
+                downloadBlob(await exportPosterPdf(stageRef.current, { sizeKey: posterStyle?.custom?.size }), `${base}.pdf`);
+            } else if (format === 'jpg') {
+                downloadBlob(await exportPosterBlob(stageRef.current, { outputWidth: 2160, mimeType: 'image/jpeg', quality: 0.95 }), `${base}.jpg`);
+            } else {
+                downloadBlob(await exportPosterBlob(stageRef.current, { outputWidth: 2160 }), `${base}.png`);
+            }
             toast.success("Poster download started!");
         } catch (err) {
             toast.error(err.message || "Failed to export poster");
@@ -491,16 +554,30 @@ const PosterGenerator = () => {
                             {!isGenerating && generatedImage && posterStyle && (
                                 <>
                                     <div style={{ display: 'flex', justifyContent: 'center', width: '100%', overflow: 'auto', borderRadius: '12px', paddingBottom: '10px' }}>
-                                        <div style={{ flexShrink: 0, width: '600px' }}>
+                                        <div style={{ flexShrink: 0, width: `${previewWidth}px` }}>
                                             <PosterStage
                                                 ref={stageRef}
                                                 recipe={posterStyle}
                                                 data={normalizeFormData(selectedTemplate, formData)}
                                                 aiBackgroundImage={generatedImage}
-                                                width={600}
+                                                width={previewWidth}
                                             />
                                         </div>
                                     </div>
+
+                                    <PosterCustomizer
+                                        template={selectedTemplate}
+                                        recipe={posterStyle}
+                                        custom={posterStyle.custom || {}}
+                                        onRecipe={updateRecipe}
+                                        onCustom={updateCustom}
+                                        data={normalizeFormData(selectedTemplate, formData)}
+                                        photo={generatedImage}
+                                        onShuffle={handleShuffle}
+                                        onNewBackground={handleNewBackground}
+                                        onUploadPhoto={handleUploadPhoto}
+                                        busy={isBgBusy}
+                                    />
 
                                     {/* Action buttons below poster */}
                                     <div className="tool-actions" style={{ marginTop: '1rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
@@ -510,9 +587,11 @@ const PosterGenerator = () => {
                                         <button className="tool-btn-primary" onClick={() => handleSave('final')} disabled={isSaving}>
                                             <FiCheckCircle /> {isSaving ? 'Saving...' : 'Finalise'}
                                         </button>
-                                        <button className="tool-btn-generate" onClick={handleDownload}>
-                                            Download
+                                        <button className="tool-btn-generate" onClick={() => handleDownload('png')}>
+                                            Download PNG
                                         </button>
+                                        <button className="tool-btn-secondary" onClick={() => handleDownload('jpg')}>JPG</button>
+                                        <button className="tool-btn-secondary" onClick={() => handleDownload('pdf')}>PDF</button>
                                     </div>
                                 </>
                             )}

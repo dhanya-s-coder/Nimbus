@@ -2,19 +2,26 @@ import { AiProviderError, withRetry } from '../errors.js';
 
 const NAME = 'pollinations';
 
+/**
+ * Pollinations image generation. With POLLINATIONS_API_KEY the authenticated gen.pollinations.ai
+ * endpoint is used (clean images, no watermark); without a key it falls back to the free legacy endpoint.
+ */
 export const pollinationsImage = {
     name: NAME,
     async generateImage({ prompt, width, height, modelName }) {
+        const key = process.env.POLLINATIONS_API_KEY;
         const model = modelName || process.env.POLLINATIONS_MODEL || 'flux';
         const params = new URLSearchParams({
             width: String(width || 1024),
             height: String(height || 1280),
             model,
-            nologo: 'true',
             seed: String(Math.floor(Math.random() * 1e9)),
         });
-        const url = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt.slice(0, 1500))}?${params}`;
-        const headers = process.env.POLLINATIONS_API_KEY ? { Authorization: `Bearer ${process.env.POLLINATIONS_API_KEY}` } : {};
+        const text = encodeURIComponent(String(prompt).slice(0, 1500));
+        const url = key
+            ? `https://gen.pollinations.ai/image/${text}?${params}`
+            : `https://image.pollinations.ai/prompt/${text}?${params}&nologo=true`;
+        const headers = key ? { Authorization: `Bearer ${key}` } : {};
 
         const res = await withRetry(NAME, async (signal) => {
             const r = await fetch(url, { signal, headers });

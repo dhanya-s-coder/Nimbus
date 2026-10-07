@@ -113,7 +113,7 @@ export const BgTopography = ({ palette }) => {
                         opacity={0.55 - i * 0.05}
                     />
                 ))}
-                <Path data="M40 640 C120 560, 220 600, 310 520 C400 440, 470 500, 580 430" stroke={palette.primary} strokeWidth={0.6} opacity={0.35} />
+                <Path y={H - 750} data="M40 640 C120 560, 220 600, 310 520 C400 440, 470 500, 580 430" stroke={palette.primary} strokeWidth={0.6} opacity={0.35} />
             </Group>
         </Group>
     );
@@ -168,18 +168,22 @@ export const BgGoldSparkle = ({ palette }) => (
         <Glow x={0} y={100} rw={55} rh={40} color={`${palette.secondary}25`} />
         <Glow x={100} y={100} rw={55} rh={40} color={`${palette.accent}20`} />
         <Group opacity={0.35}>
+            <Group y={H - 750}>
             {[[40, 680, 2.5], [70, 710, 1.8], [20, 720, 1.5], [55, 740, 2], [90, 700, 1.2], [110, 680, 1.8], [30, 650, 1.5], [75, 660, 1.2]].map(([x, y, r], i) => (
                 <Circle key={i} x={x} y={y} radius={r} fill={palette.accent} opacity={0.6 + (i % 3) * 0.1} />
             ))}
             {[[540, 680, 2.2], [560, 710, 1.8], [580, 695, 1.5], [520, 720, 2], [555, 740, 1.2], [570, 660, 1.8], [545, 650, 1.5]].map(([x, y, r], i) => (
                 <Circle key={`r${i}`} x={x} y={y} radius={r} fill={palette.secondary} opacity={0.5 + (i % 3) * 0.1} />
             ))}
+            </Group>
             {[[200, 400, 1], [380, 320, 1.2], [450, 480, 0.8], [150, 550, 1], [500, 250, 0.9]].map(([x, y, r], i) => (
                 <Circle key={`c${i}`} x={x} y={y} radius={r} fill={palette.accent} opacity={0.3} />
             ))}
-            {['M18 18 L22 22 M22 18 L18 22 M20 14 L20 26 M14 20 L26 20', 'M578 18 L582 22 M582 18 L578 22 M580 14 L580 26 M574 20 L586 20',
-                'M18 730 L22 734 M22 730 L18 734 M20 726 L20 738 M14 732 L26 732', 'M578 730 L582 734 M582 730 L578 734 M580 726 L580 738 M574 732 L586 732'].map((d) => (
+            {['M18 18 L22 22 M22 18 L18 22 M20 14 L20 26 M14 20 L26 20', 'M578 18 L582 22 M582 18 L578 22 M580 14 L580 26 M574 20 L586 20'].map((d) => (
                 <Path key={d} data={d} stroke={palette.accent} strokeWidth={0.8} opacity={0.5} />
+            ))}
+            {['M18 730 L22 734 M22 730 L18 734 M20 726 L20 738 M14 732 L26 732', 'M578 730 L582 734 M582 730 L578 734 M580 726 L580 738 M574 732 L586 732'].map((d) => (
+                <Path key={d} y={H - 750} data={d} stroke={palette.accent} strokeWidth={0.8} opacity={0.5} />
             ))}
         </Group>
         <Grain opacity={0.04} />
@@ -202,14 +206,16 @@ const MESH_EDGES = [
 ];
 export const BgMeshNetwork = ({ palette }) => {
     const light = isLight(palette);
+    const k = H / 750;
+    const N = MESH_NODES.map(([x, y]) => [x, y * k]);
     return (
         <Group listening={false}>
             <GradientBase palette={palette} glowAt={[60, 15]} />
             <Group opacity={light ? 0.18 : 0.12}>
                 {MESH_EDGES.map(([a, b], i) => (
-                    <Line key={i} points={[...MESH_NODES[a], ...MESH_NODES[b]]} stroke={palette.secondary} strokeWidth={0.5} />
+                    <Line key={i} points={[...N[a], ...N[b]]} stroke={palette.secondary} strokeWidth={0.5} />
                 ))}
-                {MESH_NODES.map(([x, y], i) => <Circle key={i} x={x} y={y} radius={2.5} fill={palette.primary} opacity={0.7} />)}
+                {N.map(([x, y], i) => <Circle key={i} x={x} y={y} radius={2.5} fill={palette.primary} opacity={0.7} />)}
             </Group>
         </Group>
     );

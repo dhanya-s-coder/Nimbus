@@ -37,10 +37,16 @@ export const savePosterController = async (req, res) => {
                 if (match) storedFormData[key] = await uploadBufferToCloudinary(Buffer.from(match[1], 'base64'), 'nimbus/poster-assets');
             }
         }
+        // own-photo backgrounds arrive as data URLs: host them instead of bloating the DB
+        let finalImageUrl = generatedImageUrl || null;
+        if (typeof finalImageUrl === 'string' && finalImageUrl.startsWith('data:')) {
+            const m = finalImageUrl.match(/^data:[^;]+;base64,(.*)$/);
+            finalImageUrl = m ? await uploadBufferToCloudinary(Buffer.from(m[1], 'base64'), 'nimbus/poster-backgrounds') : null;
+        }
         const draft = await savePosterDraft(userId, {
             templateType,
             formData: storedFormData,
-            generatedImageUrl: generatedImageUrl || null,
+            generatedImageUrl: finalImageUrl,
             posterStyle: posterStyle || null,
             status: status || 'draft'
         });

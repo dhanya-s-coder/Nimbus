@@ -263,6 +263,18 @@ export const getDesignByIndex = (templateType, index, hints = {}) => {
     };
 };
 
+/** All curated recipes for a template, each with its default palette (for the gallery). */
+export const getDesignRecipes = (templateType) =>
+    (DESIGN_POOLS[templateType] || DESIGN_POOLS.event).map((d, index) => ({
+        index,
+        skeleton: d.skeleton,
+        background: d.background,
+        frame: d.frame,
+        decoration: d.decoration,
+        palettes: d.palettes,
+        paletteId: d.palettes[0],
+    }));
+
 export const getDesignCount = (templateType) => {
     return (DESIGN_POOLS[templateType] || DESIGN_POOLS.event).length;
 };

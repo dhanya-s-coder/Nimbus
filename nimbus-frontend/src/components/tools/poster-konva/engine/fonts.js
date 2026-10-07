@@ -69,3 +69,9 @@ export const familiesForPalette = (palette) => [
     ...(palette.titleFonts || []),
     palette.bodyFont,
 ];
+
+/** Title fonts offered in the Customize panel (all self-hosted above). */
+export const TITLE_FONT_CHOICES = [
+    'Montserrat', 'Outfit', 'Space Grotesk', 'Bebas Neue', 'Oswald', 'Orbitron',
+    'Playfair Display', 'DM Serif Display', 'Cormorant Garamond', 'Libre Baskerville',
+];
