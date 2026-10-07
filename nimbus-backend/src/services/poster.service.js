@@ -1,5 +1,6 @@
 import { ImageFactory } from './ai/image/image.factory.js';
 import { uploadBufferToCloudinary } from '../utils/cloudinaryHelper.js';
+import { planArtDirection, BACKGROUND_RULES } from './artDirector.service.js';
 
 export const buildBackgroundPrompt = (eventName = "", category = "", theme = "", colorPreference = "") => {
     const n = (eventName + " " + category + " " + theme).toLowerCase();
@@ -72,12 +73,33 @@ underexposed, bad composition, cluttered, messy`;
  * Generate a poster background with the active (or allowlisted override) image provider,
  * upload it to Cloudinary and return the hosted URL.
  */
-export const generatePosterBackground = async ({ eventName, category, theme, formData, templateType, imageProvider }) => {
+export const generatePosterBackground = async ({
+    userId, eventName, category, theme, formData, templateType, imageProvider, textProvider, instruction, useBrandStyle = true,
+}) => {
     const finalEventName = eventName || formData?.eventName || '';
     const finalCategory = category || formData?.eventType || formData?.category || templateType || '';
     const finalTheme = theme || formData?.theme || '';
 
-    const prompt = buildBackgroundPrompt(finalEventName, finalCategory, finalTheme, formData?.colorPreference);
+    // 1) art director (knowledge base + style notes) -> falls back to the keyword prompt on any failure
+    let art = null;
+    let prompt = null;
+    if (useBrandStyle !== false) {
+        try {
+            art = await Promise.race([
+                planArtDirection({ userId, templateType, formData, instruction, textProvider }),
+                new Promise((_, rej) => setTimeout(() => rej(new Error('art director timed out')), 20000)),
+            ]);
+            prompt = `${art.imagePrompt}, ${BACKGROUND_RULES}`;
+        } catch (err) {
+            console.warn(`Art director unavailable (${err.message}); using keyword prompt`);
+            art = null;
+        }
+    }
+    if (!prompt) {
+        const base = buildBackgroundPrompt(finalEventName, finalCategory, finalTheme, formData?.colorPreference);
+        prompt = instruction ? `${instruction}, ${base}` : base;
+    }
+
     const image = await ImageFactory.generateImage({
         customProvider: imageProvider,
         prompt,
@@ -88,5 +110,8 @@ export const generatePosterBackground = async ({ eventName, category, theme, for
         guidance: 8.0,
     });
     const url = await uploadBufferToCloudinary(image.buffer, 'nimbus');
-    return { url, mimeType: image.mimeType || 'image/jpeg', provider: image.provider, prompt };
+    return {
+        url, mimeType: image.mimeType || 'image/jpeg', provider: image.provider, prompt,
+        art: art ? { mood: art.mood, colors: art.colors, prompt: art.imagePrompt, sources: art.sources } : null,
+    };
 };

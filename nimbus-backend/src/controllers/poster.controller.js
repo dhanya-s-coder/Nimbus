@@ -4,16 +4,18 @@ import { generatePosterBackground } from "../services/poster.service.js";
 
 export const generatePosterController = async (req, res) => {
     try {
-        const { eventName, category, theme, formData, templateType, imageProvider } = req.body;
-        const { url, mimeType, provider } = await generatePosterBackground({
-            eventName, category, theme, formData, templateType, imageProvider
+        const { eventName, category, theme, formData, templateType, imageProvider, textProvider, instruction, useBrandStyle } = req.body;
+        const { url, mimeType, provider, art } = await generatePosterBackground({
+            userId: req.user?.userId, eventName, category, theme, formData, templateType, imageProvider, textProvider,
+            instruction: typeof instruction === 'string' ? instruction.slice(0, 400) : '', useBrandStyle
         });
 
         res.json({
             success: true,
             data: {
                 image: { mimeType, url },
-                provider
+                provider,
+                art
             }
         });
     } catch (error) {
