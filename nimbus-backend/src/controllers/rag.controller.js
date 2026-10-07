@@ -1,6 +1,7 @@
 import { ingestText, listSources, deleteSource, SOURCE_TYPES } from '../services/rag/ingest.service.js';
 import { searchKnowledge } from '../services/rag/retrieval.service.js';
 import { generatePosterContent } from '../services/posterContent.service.js';
+import { extractText } from '../services/rag/extract.service.js';
 
 const isAdmin = (req) =>
     (process.env.RAG_ADMIN_EMAILS || '').split(',').map((s) => s.trim().toLowerCase()).filter(Boolean)
@@ -49,4 +50,18 @@ export const posterContentController = async (req, res) => {
         const data = await generatePosterContent({ userId: req.user.userId, templateType, formData, instruction, textProvider });
         res.json({ success: true, data });
     } catch (e) { fail(res, e, 'Failed to generate poster content'); }
+};
+
+export const capabilitiesController = (req, res) => res.json({ success: true, data: { isAdmin: isAdmin(req) } });
+
+export const ingestFileController = async (req, res) => {
+    try {
+        if (!req.file) return res.status(400).json({ success: false, message: 'Attach a file in the "file" field' });
+        const scope = req.body.scope === 'global' ? 'global' : 'user';
+        if (scope === 'global' && !isAdmin(req)) return res.status(403).json({ success: false, message: 'Only admins can add global knowledge' });
+        const text = await extractText(req.file);
+        const title = (req.body.title || req.file.originalname || 'Uploaded file').slice(0, 120);
+        const result = await ingestText({ ownerId: req.user.userId, scope, type: req.body.type || 'upload', title, text, metadata: { filename: req.file.originalname } });
+        res.status(result.duplicate ? 200 : 201).json({ success: true, data: { ...result, characters: text.length } });
+    } catch (e) { fail(res, e, 'Failed to ingest file'); }
 };

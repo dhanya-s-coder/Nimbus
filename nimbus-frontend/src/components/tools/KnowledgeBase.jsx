@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { fetchWithAuth, API_ENDPOINTS } from '../../api/config';
 import { toast } from '../../utils/toast';
 import { FiTrash2, FiDatabase } from 'react-icons/fi';
@@ -19,6 +19,9 @@ const KnowledgeBase = () => {
     const [sources, setSources] = useState([]);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    const [isAdmin, setIsAdmin] = useState(false);
+    const [shareAll, setShareAll] = useState(false);
+    const fileRef = useRef(null);
 
     const load = useCallback(async () => {
         try {
@@ -34,6 +37,30 @@ const KnowledgeBase = () => {
     }, []);
 
     useEffect(() => { load(); }, [load]);
+    useEffect(() => {
+        fetchWithAuth(API_ENDPOINTS.RAG.CAPABILITIES).then((r) => r.json()).then((d) => setIsAdmin(!!d?.data?.isAdmin)).catch(() => {});
+    }, []);
+
+    const uploadFile = async (file) => {
+        setSaving(true);
+        try {
+            const fd = new FormData();
+            fd.append('file', file);
+            fd.append('type', form.type);
+            if (form.title.trim()) fd.append('title', form.title.trim());
+            if (isAdmin && shareAll) fd.append('scope', 'global');
+            const res = await fetchWithAuth(API_ENDPOINTS.RAG.INGEST_FILE, { method: 'POST', body: fd });
+            const data = await res.json();
+            if (!res.ok || !data.success) throw new Error(data.error || data.message);
+            toast.success(data.data.duplicate ? 'Already in your knowledge base' : `Indexed ${data.data.chunks} passages from ${file.name}`);
+            setForm({ ...form, title: '' });
+            load();
+        } catch (err) {
+            toast.error(err.message || 'Could not read that file');
+        } finally {
+            setSaving(false);
+        }
+    };
 
     const add = async () => {
         if (!form.title.trim() || !form.text.trim()) {
@@ -42,7 +69,7 @@ const KnowledgeBase = () => {
         }
         setSaving(true);
         try {
-            const res = await fetchWithAuth(API_ENDPOINTS.RAG.INGEST, { method: 'POST', body: JSON.stringify(form) });
+            const res = await fetchWithAuth(API_ENDPOINTS.RAG.INGEST, { method: 'POST', body: JSON.stringify({ ...form, scope: isAdmin && shareAll ? 'global' : 'user' }) });
             const data = await res.json();
             if (!res.ok || !data.success) throw new Error(data.error || data.message);
             toast.success(data.data.duplicate ? 'Already in your knowledge base' : `Added (${data.data.chunks} searchable passages)`);
@@ -95,9 +122,20 @@ const KnowledgeBase = () => {
                             </div>
                         </section>
                         <section className="tool-actions">
+                            {isAdmin && (
+                                <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: '0.85rem', marginBottom: 10 }}>
+                                    <input type="checkbox" checked={shareAll} onChange={(e) => setShareAll(e.target.checked)} />
+                                    Share with everyone (admin)
+                                </label>
+                            )}
                             <button className="tool-btn-generate" onClick={add} disabled={saving}>
                                 {saving ? 'Indexing...' : 'Add to Knowledge Base'}
                             </button>
+                            <button className="tool-btn-secondary" style={{ width: '100%', marginTop: 8, justifyContent: 'center' }} onClick={() => fileRef.current?.click()} disabled={saving}>
+                                📄 Upload PDF / DOCX / TXT
+                            </button>
+                            <input ref={fileRef} type="file" hidden accept=".pdf,.docx,.txt,.md,.csv"
+                                onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadFile(f); e.target.value = ''; }} />
                         </section>
                     </div>
                 </div>

@@ -41,6 +41,8 @@ export const API_ENDPOINTS = {
     INGEST: `${API_BASE_URL}/api/rag/ingest`,
     SEARCH: `${API_BASE_URL}/api/rag/search`,
     SOURCES: `${API_BASE_URL}/api/rag/sources`,
+    INGEST_FILE: `${API_BASE_URL}/api/rag/ingest-file`,
+    CAPABILITIES: `${API_BASE_URL}/api/rag/capabilities`,
     POSTER_CONTENT: `${API_BASE_URL}/api/generate/poster-content`,
   },
   REPORT: {
@@ -67,6 +69,8 @@ export const fetchWithAuth = async (url, options = {}) => {
     'Content-Type': 'application/json',
     ...options.headers,
   };
+  // multipart uploads: let the browser set the boundary
+  if (typeof FormData !== 'undefined' && options.body instanceof FormData) delete headers['Content-Type'];
 
   if (accessToken) {
     headers.Authorization = `Bearer ${accessToken}`;
