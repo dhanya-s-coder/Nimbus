@@ -140,20 +140,6 @@ const PosterGenerator = () => {
     const [art, setArt] = useState(null);
     const [stepIndex, setStepIndex] = useState(0);
 
-    // arriving from the Dashboard's one-line box: prefill and start straight away
-    const [pendingCreate, setPendingCreate] = useState(false);
-    useEffect(() => {
-        const q = location.state?.quickStart;
-        if (!q) return;
-        setSelectedTemplate(q.template || 'event');
-        setFormData({});
-        setBrief(q.brief || '');
-        setGeneratedImage(null);
-        setPosterStyle(null);
-        if (q.autoCreate) setPendingCreate(true);
-        window.history.replaceState({}, document.title); // don't re-run on refresh
-    }, [location.state]);
-
     useEffect(() => {
         if (location.state?.posterData) {
             const { templateType, formData: savedFormData, generatedImageUrl, posterStyle: savedStyle } = location.state.posterData;
@@ -608,14 +594,6 @@ const PosterGenerator = () => {
     };
 
     // ─────────────────────────────────────────────────────────────────────────
-    useEffect(() => {
-        if (pendingCreate) {
-            setPendingCreate(false);
-            handleCreate();
-        }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [pendingCreate]);
-
     const titlePlaceholder = currentTemplate.fields.find((f) => f.id === titleField)?.placeholder || '';
     const briefPlaceholder = {
         academic: 'e.g. Guest lecture by Dr. Rao on AI in healthcare, 15 Jan 10 AM at Seminar Hall A. Open to all departments.',
