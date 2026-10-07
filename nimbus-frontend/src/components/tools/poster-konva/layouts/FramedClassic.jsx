@@ -1,4 +1,5 @@
 import React from 'react';
+import { Editable } from '../engine/edit';
 import { Group, Rect, Circle, Line } from 'react-konva';
 import { DESIGN_W as W, DESIGN_H as H, rem } from '../engine/constants';
 import { clear } from '../engine/color';
@@ -79,7 +80,7 @@ const FramedClassic = ({ data, palette }) => {
             {body.nodes}
 
             {infoItems.length > 0 && (
-                <Group>
+                <Editable id="info"><Group>
                     <Line points={[PAD + 20, infoTop - 8, W - PAD - 20, infoTop - 8]} stroke={palette.accent} strokeWidth={0.8} opacity={0.5} />
                     {infoItems.map((it, i) => (
                         <Group key={i} x={PAD + i * colW} y={infoTop}>
@@ -88,11 +89,11 @@ const FramedClassic = ({ data, palette }) => {
                             <Txt text={it.value} x={8} y={4 + rem(0.5) * 1.2 + 5} width={colW - 16} align="center" fontSize={rem(0.88)} fontFamily={f.title} fontStyle="700" fill={palette.text} />
                         </Group>
                     ))}
-                </Group>
+                </Group></Editable>
             )}
             {foot.node}
-            {qr1 && <QrBlock x={FRAME + 18} y={H - FRAME - 18 - 96} size={64} qr={qr1} palette={palette} labelSize={6} />}
-            {qr2 && <QrBlock x={W - FRAME - 18 - 74} y={H - FRAME - 18 - 96} size={64} qr={qr2} palette={palette} labelSize={6} />}
+            {qr1 && <QrBlock x={FRAME + 18} y={H - FRAME - 18 - 96} size={64} qr={qr1} eid="qr1" palette={palette} labelSize={6} />}
+            {qr2 && <QrBlock x={W - FRAME - 18 - 74} y={H - FRAME - 18 - 96} size={64} qr={qr2} eid="qr2" palette={palette} labelSize={6} />}
             <Circle x={W / 2} y={H - FRAME - 6} radius={0.1} />
         </Group>
     );

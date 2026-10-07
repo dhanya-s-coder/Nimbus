@@ -3,6 +3,7 @@ import { Group, Rect, Text, Image as KImage, Circle, Line } from 'react-konva';
 import useImage from 'use-image';
 import { measureText } from '../engine/text';
 import { linear } from '../engine/color';
+import { Editable } from '../engine/edit';
 
 /** Text node with canvas-friendly defaults (never listens, wraps by word). */
 export const Txt = ({ text, ...props }) => (
@@ -94,6 +95,7 @@ export const LogoBar = ({ x, y, h = 34, collegeLogo, eventLogo, cses = true, gap
     const total = items.reduce((n, it) => n + it.w, 0) + Math.max(0, items.length - 1) * gap;
     let cx = align === 'right' ? x + width - total : align === 'center' ? x + (width - total) / 2 : x;
     return (
+        <Editable id="logos">
         <Group listening={false}>
             {items.map((it) => {
                 const node = it.pill ? (
@@ -108,16 +110,18 @@ export const LogoBar = ({ x, y, h = 34, collegeLogo, eventLogo, cses = true, gap
                 return node;
             })}
         </Group>
+        </Editable>
     );
 };
 
 /** White rounded plate with a QR image and optional caption. width = plate width. */
-export const QrBlock = ({ x, y, size = 92, qr, palette, labelSize = 8 }) => {
+export const QrBlock = ({ x, y, size = 92, qr, palette, labelSize = 8, eid = 'qr1' }) => {
     const [img] = useImg(qr?.image);
     if (!qr) return null;
     const pad = 5;
     const plate = size + pad * 2;
     return (
+        <Editable id={eid}>
         <Group x={x} y={y} listening={false}>
             <Rect width={plate} height={plate} cornerRadius={6} fill="#ffffff"
                 shadowColor={`${palette.primary || '#000'}`} shadowBlur={10} shadowOpacity={0.25} shadowOffsetY={2} />
@@ -127,6 +131,7 @@ export const QrBlock = ({ x, y, size = 92, qr, palette, labelSize = 8 }) => {
                     fontFamily="Inter" fontStyle="700" letterSpacing={0.5} fill={palette.muted || palette.text} />
             )}
         </Group>
+        </Editable>
     );
 };
 
@@ -152,6 +157,7 @@ export const SpeakerAvatar = ({ x, y, size = 150, shape = 'Circle', src, palette
     const guide = 'rgba(255,255,255,0.95)';
     const glow = `${palette.primary || '#ffffff'}`;
     return (
+        <Editable id="avatar">
         <Group x={x} y={y} listening={false}>
             {/* glow follows the clipped silhouette */}
             {poly ? (
@@ -173,5 +179,6 @@ export const SpeakerAvatar = ({ x, y, size = 150, shape = 'Circle', src, palette
                 <Circle x={size / 2} y={size / 2} radius={size / 2 + 4} stroke={guide} strokeWidth={2} dash={[5, 4]} />
             )}
         </Group>
+        </Editable>
     );
 };

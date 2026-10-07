@@ -1,4 +1,5 @@
 import React from 'react';
+import { Editable } from '../engine/edit';
 import { Group, Rect, Line } from 'react-konva';
 import { DESIGN_W as W, DESIGN_H as H, rem } from '../engine/constants';
 import { clear } from '../engine/color';
@@ -105,10 +106,10 @@ const BoldHero = ({ data, palette }) => {
                 </Group>
             )}
             {hero.nodes}
-            {infoBar && infoBar.render(barTop)}
+            {infoBar && <Editable id="info">{infoBar.render(barTop)}</Editable>}
             {foot.node}
-            {qr1 && <QrBlock x={W - PAD - 92} y={80} size={72} qr={qr1} palette={palette} />}
-            {qr2 && <QrBlock x={W - PAD - 92 - 92} y={80} size={72} qr={qr2} palette={palette} />}
+            {qr1 && <QrBlock x={W - PAD - 92} y={80} size={72} qr={qr1} eid="qr1" palette={palette} />}
+            {qr2 && <QrBlock x={W - PAD - 92 - 92} y={80} size={72} qr={qr2} eid="qr2" palette={palette} />}
         </Group>
     );
 };

@@ -1,4 +1,5 @@
 import React from 'react';
+import { Editable } from '../engine/edit';
 
 /**
  * Minimal vertical stacking (replaces CSS flex columns).
@@ -8,7 +9,8 @@ export const stack = (blocks, startY = 0) => {
     let y = startY;
     const nodes = [];
     blocks.filter(Boolean).forEach((b, i) => {
-        nodes.push(React.cloneElement(b.render(y), { key: b.key ?? i }));
+        const id = b.key ?? `b${i}`;
+        nodes.push(React.createElement(Editable, { id, key: id }, b.render(y)));
         y += b.h + (b.mb || 0);
     });
     return { nodes, height: Math.max(0, y - startY) };

@@ -1,4 +1,5 @@
 import React from 'react';
+import { Editable } from '../engine/edit';
 import { Group, Rect } from 'react-konva';
 import { DESIGN_W as W, DESIGN_H as H, rem } from '../engine/constants';
 import { clear } from '../engine/color';
@@ -185,14 +186,14 @@ const Centered = ({ data, palette }) => {
     return (
         <Group listening={false}>
             <LogoBar x={PAD_X} y={PAD_TOP} h={logoH} collegeLogo={collegeLogo} eventLogo={eventBrandLogo} tint={palette.darkContent ? "#ffffff" : palette.text} />
-            {organizerNode}
+            {organizerNode && <Editable id="org">{organizerNode}</Editable>}
             {mid.nodes}
-            {cardsNode}
+            {cardsNode && <Editable id="info">{cardsNode}</Editable>}
             {/* footer */}
             <Rect x={PAD_X} y={footerTop} width={CW} height={1} fill={palette.divider} opacity={0.6} />
             <Txt text={footerText} x={PAD_X} y={footerTop + 9} width={CW} align="center" opacity={0.6} fill={palette.muted} {...footerStyle} />
-            {qr1 && <QrBlock x={W - PAD_X - 100} y={PAD_TOP} size={80} qr={qr1} palette={palette} />}
-            {qr2 && <QrBlock x={W - PAD_X - 100 - 100} y={PAD_TOP} size={80} qr={qr2} palette={palette} />}
+            {qr1 && <QrBlock x={W - PAD_X - 100} y={PAD_TOP} size={80} qr={qr1} eid="qr1" palette={palette} />}
+            {qr2 && <QrBlock x={W - PAD_X - 100 - 100} y={PAD_TOP} size={80} qr={qr2} eid="qr2" palette={palette} />}
         </Group>
     );
 };

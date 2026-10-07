@@ -52,8 +52,8 @@ const SplitPanel = ({ data, palette }) => {
             {left.nodes}
             {(qr1 || qr2) && (
                 <Group>
-                    {qr1 && <QrBlock x={PAD} y={bottom + 8} size={60} qr={qr1} palette={palette} labelSize={6} />}
-                    {qr2 && <QrBlock x={PAD + 84} y={bottom + 8} size={60} qr={qr2} palette={palette} labelSize={6} />}
+                    {qr1 && <QrBlock x={PAD} y={bottom + 8} size={60} qr={qr1} eid="qr1" palette={palette} labelSize={6} />}
+                    {qr2 && <QrBlock x={PAD + 84} y={bottom + 8} size={60} qr={qr2} eid="qr2" palette={palette} labelSize={6} />}
                 </Group>
             )}
             {foot.node}

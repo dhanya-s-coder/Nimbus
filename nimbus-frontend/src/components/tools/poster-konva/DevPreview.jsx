@@ -34,7 +34,9 @@ const DevPreview = () => {
             ...(q.get('strength') ? { photoStrength: Number(q.get('strength')) } : {}),
         },
     };
-    const form = { ...SAMPLES[t], ...(q.get('photo') ? { speakerPhoto: BG } : {}), ...(q.get('shape') ? { speakerShape: q.get('shape') } : {}),
+    const full = SAMPLES[t];
+    const only = q.get('min') ? { [Object.keys(full)[0]]: full[Object.keys(full)[0]] } : full; // ?min=1 -> title only
+    const form = { ...only, ...(q.get('photo') ? { speakerPhoto: BG } : {}), ...(q.get('shape') ? { speakerShape: q.get('shape') } : {}),
         ...(q.get('qr') ? { qr1Image: BG } : {}), ...(q.get('long') ? { [Object.keys(SAMPLES[t])[0]]: 'An Extraordinarily Long Event Title That Keeps Going And Going For Testing' } : {}) };
     useEffect(() => {
         window.__exportPng = async (w = 2160) => {

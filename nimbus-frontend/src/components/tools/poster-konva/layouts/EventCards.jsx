@@ -1,4 +1,5 @@
 import React from 'react';
+import { Editable } from '../engine/edit';
 import { Group, Rect } from 'react-konva';
 import { DESIGN_W as W, DESIGN_H as H, rem } from '../engine/constants';
 import { Txt, LogoBar, QrBlock } from '../layers/ui';
@@ -37,10 +38,10 @@ const EventCards = ({ data, palette }) => {
                     <Txt text={String(extraItems[0].label).toUpperCase()} y={8} width={160} align="center" fontSize={10} fontFamily={f.body} fontStyle="800" letterSpacing={1} fill="#fff" wrap="none" />
                 </Group>
             )}
-            {cards && cards.render(cardsTop)}
+            {cards && <Editable id="info">{cards.render(cardsTop)}</Editable>}
             {foot.node}
-            {qr1 && <QrBlock x={W - PAD - 92} y={PAD + 40} size={72} qr={qr1} palette={palette} />}
-            {qr2 && <QrBlock x={W - PAD - 92 - 92} y={PAD + 40} size={72} qr={qr2} palette={palette} />}
+            {qr1 && <QrBlock x={W - PAD - 92} y={PAD + 40} size={72} qr={qr1} eid="qr1" palette={palette} />}
+            {qr2 && <QrBlock x={W - PAD - 92 - 92} y={PAD + 40} size={72} qr={qr2} eid="qr2" palette={palette} />}
         </Group>
     );
 };

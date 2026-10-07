@@ -1,4 +1,5 @@
 import React from 'react';
+import { Editable } from '../engine/edit';
 import { Group, Rect } from 'react-konva';
 import { DESIGN_W as W, DESIGN_H as H, rem } from '../engine/constants';
 import { Txt, LogoBar, QrBlock, SpeakerAvatar, Card } from '../layers/ui';
@@ -88,10 +89,10 @@ const Asymmetric = ({ data, palette }) => {
                 </Group>
             )}
             {body.nodes}
-            {infoNodes}
+            {infoNodes.length > 0 && <Editable id="info"><Group listening={false}>{infoNodes}</Group></Editable>}
             {foot.node}
-            {qr1 && <QrBlock x={W - PAD - 92} y={infoTop} size={72} qr={qr1} palette={palette} />}
-            {qr2 && <QrBlock x={W - PAD - 92 - 92} y={infoTop} size={72} qr={qr2} palette={palette} />}
+            {qr1 && <QrBlock x={W - PAD - 92} y={infoTop} size={72} qr={qr1} eid="qr1" palette={palette} />}
+            {qr2 && <QrBlock x={W - PAD - 92 - 92} y={infoTop} size={72} qr={qr2} eid="qr2" palette={palette} />}
         </Group>
     );
 };

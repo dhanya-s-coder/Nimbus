@@ -113,6 +113,14 @@ const PosterGenerator = () => {
     const stageRef = useRef(null);
     const [isAutofilling, setIsAutofilling] = useState(false);
     const [isBgBusy, setIsBgBusy] = useState(false);
+    // direct editing (drag / resize / hide / add text) with undo-redo
+    const [editing, setEditing] = useState(false);
+    const [selectedId, setSelectedId] = useState(null);
+    const styleRef = useRef(null);
+    const past = useRef([]);
+    const future = useRef([]);
+    const lastTextEdit = useRef(0);
+    const [, bumpHistory] = useState(0);
     // keep the whole poster (and the Customize panel under it) on screen: fit the preview to the window height
     const [viewportH, setViewportH] = useState(() => window.innerHeight);
     useEffect(() => {
@@ -166,9 +174,11 @@ const PosterGenerator = () => {
         }
     }, [generatedImage, posterStyle, selectedTemplate, formData]);
 
+    styleRef.current = posterStyle;
+    if (process.env.NODE_ENV !== 'production') window.__posterStyle = posterStyle; // dev/QA hook
     const currentTemplate = TEMPLATES[selectedTemplate];
     const designH = (SIZES[posterStyle?.custom?.size] || SIZES[DEFAULT_SIZE]).h;
-    const previewWidth = Math.round(Math.max(300, Math.min(600, ((viewportH - 260) * 600) / designH)));
+    const previewWidth = Math.round(Math.max(300, Math.min(600, ((viewportH - 400) * 600) / designH)));
 
     const handleTemplateChange = (templateId) => {
         setSelectedTemplate(templateId);
@@ -225,7 +235,8 @@ const PosterGenerator = () => {
             return;
         }
 
-        const keepCustom = posterStyle?.custom;   // size / font / colours survive regeneration
+        const keepCustom = posterStyle?.custom ? { ...posterStyle.custom, overrides: undefined } : undefined;   // size / font / colours / own text survive regeneration; moved positions don't
+        past.current = []; future.current = [];
         setIsGenerating(true);
         setError(null);
         setGeneratedImage(null);
@@ -289,8 +300,88 @@ const PosterGenerator = () => {
     };
 
     // -- Customize panel actions --------------------------------------------
-    const updateCustom = (patch) => setPosterStyle((p) => (p ? { ...p, custom: { ...(p.custom || {}), ...patch } } : p));
-    const updateRecipe = (recipe) => setPosterStyle((p) => ({ ...recipe, custom: p?.custom }));
+    const snap = () => {
+        const c = styleRef.current?.custom || {};
+        return { overrides: c.overrides || {}, extras: c.extras || [] };
+    };
+    const record = () => {
+        past.current.push(snap());
+        if (past.current.length > 100) past.current.shift();
+        future.current = [];
+        bumpHistory((n) => n + 1);
+    };
+    const applyEdit = (patch, rec = true) => {
+        if (rec) record();
+        setPosterStyle((p) => (p ? { ...p, custom: { ...(p.custom || {}), ...patch } } : p));
+    };
+    const hasOverrides = () => Object.keys(snap().overrides).length > 0;
+
+    const updateCustom = (patch) => {
+        // positions are only meaningful for one canvas size: moving to another size starts from the layout's own positions
+        if (patch.size !== undefined && patch.size !== (styleRef.current?.custom?.size) && hasOverrides()) {
+            applyEdit({ ...patch, overrides: {} });
+        } else {
+            setPosterStyle((p) => (p ? { ...p, custom: { ...(p.custom || {}), ...patch } } : p));
+        }
+    };
+    const updateRecipe = (recipe) => {
+        const changedLayout = recipe.skeleton !== styleRef.current?.skeleton;
+        if (changedLayout && hasOverrides()) record();
+        setPosterStyle((p) => ({ ...recipe, custom: { ...(p?.custom || {}), ...(changedLayout ? { overrides: {} } : {}) } }));
+    };
+
+    const commitElement = (id, patch) => {
+        const o = snap().overrides;
+        applyEdit({ overrides: { ...o, [id]: { ...(o[id] || {}), ...patch } } });
+    };
+    const deleteElement = (id) => {
+        const { overrides: o, extras } = snap();
+        if (id.startsWith('x_')) {
+            const { [id]: _drop, ...rest } = o;
+            applyEdit({ extras: extras.filter((e) => e.id !== id), overrides: rest });
+        } else {
+            applyEdit({ overrides: { ...o, [id]: { ...(o[id] || {}), hidden: true } } });
+        }
+        setSelectedId(null);
+    };
+    const restoreElement = (id) => {
+        const o = snap().overrides;
+        const { hidden: _h, ...rest } = o[id] || {};
+        const next = { ...o };
+        if (Object.keys(rest).length) next[id] = rest; else delete next[id];
+        applyEdit({ overrides: next });
+    };
+    const resetElement = (id) => {
+        const { [id]: _drop, ...rest } = snap().overrides;
+        applyEdit({ overrides: rest });
+    };
+    const addText = () => {
+        const id = `x_${Date.now().toString(36)}`;
+        const h = designH;
+        applyEdit({ extras: [...snap().extras, { id, text: 'Your text', x: 60, y: Math.round(h / 2 - 20), width: 480, size: 32, align: 'center' }] });
+        setSelectedId(id);
+    };
+    const updateExtra = (id, patch) => {
+        const now = Date.now();
+        const rec = patch.text === undefined || now - lastTextEdit.current > 800; // coalesce typing into one undo step
+        if (patch.text !== undefined) lastTextEdit.current = now;
+        applyEdit({ extras: snap().extras.map((e) => (e.id === id ? { ...e, ...patch } : e)) }, rec);
+    };
+    const undo = () => {
+        const prev = past.current.pop();
+        if (!prev) return;
+        future.current.push(snap());
+        setPosterStyle((p) => (p ? { ...p, custom: { ...(p.custom || {}), ...prev } } : p));
+        bumpHistory((n) => n + 1);
+    };
+    const redo = () => {
+        const next = future.current.pop();
+        if (!next) return;
+        past.current.push(snap());
+        setPosterStyle((p) => (p ? { ...p, custom: { ...(p.custom || {}), ...next } } : p));
+        bumpHistory((n) => n + 1);
+    };
+    const resetLayoutEdits = () => applyEdit({ overrides: {} });
 
     const handleShuffle = () => {
         const designs = getDesignRecipes(selectedTemplate);
@@ -301,7 +392,8 @@ const PosterGenerator = () => {
         const palettes = pick.palettes.filter((id) => id !== posterStyle?.paletteId);
         const choices = palettes.length ? palettes : pick.palettes;
         const paletteId = choices[Math.floor(Math.random() * choices.length)];
-        setPosterStyle((p) => ({ ...pick, paletteId, custom: p?.custom }));
+        if (hasOverrides()) record();
+        setPosterStyle((p) => ({ ...pick, paletteId, custom: { ...(p?.custom || {}), overrides: {} } }));
     };
 
     const handleNewBackground = async () => {
@@ -561,6 +653,13 @@ const PosterGenerator = () => {
                                                 data={normalizeFormData(selectedTemplate, formData)}
                                                 aiBackgroundImage={generatedImage}
                                                 width={previewWidth}
+                                                editing={editing}
+                                                selectedId={selectedId}
+                                                onSelect={setSelectedId}
+                                                onCommit={commitElement}
+                                                onDelete={deleteElement}
+                                                onUndo={undo}
+                                                onRedo={redo}
                                             />
                                         </div>
                                     </div>
@@ -577,6 +676,19 @@ const PosterGenerator = () => {
                                         onNewBackground={handleNewBackground}
                                         onUploadPhoto={handleUploadPhoto}
                                         busy={isBgBusy}
+                                        onEditing={(on) => { setEditing(on); if (!on) setSelectedId(null); }}
+                                        selectedId={selectedId}
+                                        onSelect={setSelectedId}
+                                        onUndo={undo}
+                                        onRedo={redo}
+                                        canUndo={past.current.length > 0}
+                                        canRedo={future.current.length > 0}
+                                        onResetAll={resetLayoutEdits}
+                                        onAddText={addText}
+                                        onUpdateExtra={updateExtra}
+                                        onResetElement={resetElement}
+                                        onDeleteElement={deleteElement}
+                                        onRestore={restoreElement}
                                     />
 
                                     {/* Action buttons below poster */}

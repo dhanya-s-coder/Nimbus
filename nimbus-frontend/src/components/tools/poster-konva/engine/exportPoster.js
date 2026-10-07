@@ -8,11 +8,16 @@ export const exportPosterBlob = (stage, { outputWidth = POSTER_W * 2, mimeType =
     new Promise((resolve, reject) => {
         if (!stage) return reject(new Error('Poster stage not ready'));
         const pixelRatio = outputWidth / stage.width();
+        // selection handles / guides / hover outlines must never reach the exported file
+        const ui = stage.find('.editor-ui');
+        const was = ui.map((n) => n.visible());
+        ui.forEach((n) => n.visible(false));
+        const restore = () => ui.forEach((n, i) => n.visible(was[i]));
         stage.toBlob({
             pixelRatio,
             mimeType,
             quality,
-            callback: (blob) => (blob ? resolve(blob) : reject(new Error('Export failed'))),
+            callback: (blob) => { restore(); return blob ? resolve(blob) : reject(new Error('Export failed')); },
         });
     });
 

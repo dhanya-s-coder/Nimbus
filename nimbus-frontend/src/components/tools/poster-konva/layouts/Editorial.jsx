@@ -88,8 +88,8 @@ const Editorial = ({ data, palette }) => {
             <LogoBar x={PAD_L} y={26} h={32} collegeLogo={collegeLogo} eventLogo={eventBrandLogo} tint={palette.darkContent ? "#ffffff" : palette.text} />
             {body.nodes}
             {foot.node}
-            {qr1 && <QrBlock x={W - PAD_R - 84} y={22} size={64} qr={qr1} palette={palette} labelSize={6} />}
-            {qr2 && <QrBlock x={W - PAD_R - 84 - 90} y={22} size={64} qr={qr2} palette={palette} labelSize={6} />}
+            {qr1 && <QrBlock x={W - PAD_R - 84} y={22} size={64} qr={qr1} eid="qr1" palette={palette} labelSize={6} />}
+            {qr2 && <QrBlock x={W - PAD_R - 84 - 90} y={22} size={64} qr={qr2} eid="qr2" palette={palette} labelSize={6} />}
         </Group>
     );
 };

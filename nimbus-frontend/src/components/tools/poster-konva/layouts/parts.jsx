@@ -5,6 +5,7 @@ import { clear } from '../engine/color';
 import { fitFontSize, measureWidth, truncate, titleScale } from '../engine/text';
 import { Txt, textHeight, Card } from '../layers/ui';
 import { GradBar } from '../layers/primitives';
+import { Editable } from '../engine/edit';
 
 /**
  * Layout building blocks. Each *Block returns { h, mb, key, render(y) } for stack().
@@ -188,10 +189,12 @@ export const footerNode = ({ text, x, w, bottom, palette, font, size = rem(0.48)
     return {
         top,
         node: (
-            <Group listening={false}>
-                {line && <Rect x={x} y={top} width={w} height={1} fill={palette.divider} opacity={0.6} />}
-                <Txt text={t} x={x} y={top + (line ? 9 : 0)} width={w} align={align} fontSize={size} fontFamily={font} letterSpacing={0.5} fill={palette.muted} opacity={0.6} />
-            </Group>
+            <Editable id="footer">
+                <Group listening={false}>
+                    {line && <Rect x={x} y={top} width={w} height={1} fill={palette.divider} opacity={0.6} />}
+                    <Txt text={t} x={x} y={top + (line ? 9 : 0)} width={w} align={align} fontSize={size} fontFamily={font} letterSpacing={0.5} fill={palette.muted} opacity={0.6} />
+                </Group>
+            </Editable>
         ),
     };
 };
