@@ -435,14 +435,20 @@ const PosterGenerator = () => {
 
         setIsSaving(true);
         try {
+            let previewImage = null;
+            try {
+                const blob = await exportPosterBlob(stageRef.current, { outputWidth: 420, mimeType: 'image/jpeg', quality: 0.8 });
+                previewImage = await new Promise((resolve) => { const r = new FileReader(); r.onload = () => resolve(r.result); r.readAsDataURL(blob); });
+            } catch { /* preview is optional */ }
             const response = await fetchWithAuth(API_ENDPOINTS.POSTER.SAVE, {
                 method: 'POST',
                 body: JSON.stringify({
                     templateType: selectedTemplate,
                     formData,
                     status,
-                    generatedImageUrl: generatedImage
-                    ,posterStyle
+                    generatedImageUrl: generatedImage,
+                    posterStyle,
+                    previewImage
                 })
             });
             const data = await response.json();

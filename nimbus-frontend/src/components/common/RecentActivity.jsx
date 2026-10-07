@@ -83,13 +83,17 @@ const RecentActivity = ({ filterType = 'All', limit = 3, showViewAll = true, tit
                 ) : (
                     filteredItems.map((item) => (
                         <div key={item.id} className="activity-item">
-                            <div className="preview-box">
+                            <div className="preview-box" style={(item.previewUrl || (item.type?.toLowerCase() === 'logo' && item.generatedImageUrl)) ? { padding: 0, overflow: 'hidden', width: 44, height: 55 } : undefined}>
+                                {(item.previewUrl || (item.type?.toLowerCase() === 'logo' && item.generatedImageUrl)) ? (
+                                    <img src={item.previewUrl || item.generatedImageUrl} alt="" loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                                ) : (<>
                                 <span className="preview-box-icon">
                                     {item.previewIcon || (item.type?.toLowerCase() === 'email' ? '📧' : item.type?.toLowerCase() === 'logo' ? '🎯' : item.type?.toLowerCase() === 'report' ? '📊' : '🎨')}
                                 </span>
                                 <span className="preview-box-text">
                                     {item.type}
                                 </span>
+                                </>)}
                             </div>
 
                             <div className="activity-details">

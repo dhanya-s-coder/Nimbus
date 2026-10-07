@@ -24,7 +24,7 @@ export const generatePosterController = async (req, res) => {
 
 export const savePosterController = async (req, res) => {
     try {
-        const { templateType, formData, generatedImageUrl, posterStyle, status } = req.body;
+        const { templateType, formData, generatedImageUrl, posterStyle, status, previewImage } = req.body;
         const userId = req.user?.userId;
 
         if (!userId) return res.status(401).json({ success: false, message: "Unauthorized" });
@@ -43,10 +43,17 @@ export const savePosterController = async (req, res) => {
             const m = finalImageUrl.match(/^data:[^;]+;base64,(.*)$/);
             finalImageUrl = m ? await uploadBufferToCloudinary(Buffer.from(m[1], 'base64'), 'nimbus/poster-backgrounds') : null;
         }
+        // small JPEG of the finished poster (History thumbnails)
+        let previewUrl = null;
+        if (typeof previewImage === 'string' && previewImage.startsWith('data:image/') && previewImage.length < 2_000_000) {
+            const pm = previewImage.match(/^data:[^;]+;base64,(.*)$/);
+            if (pm) previewUrl = await uploadBufferToCloudinary(Buffer.from(pm[1], 'base64'), 'nimbus/poster-previews');
+        }
         const draft = await savePosterDraft(userId, {
             templateType,
             formData: storedFormData,
             generatedImageUrl: finalImageUrl,
+            previewUrl,
             posterStyle: posterStyle || null,
             status: status || 'draft'
         });
