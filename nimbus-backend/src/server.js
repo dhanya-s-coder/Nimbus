@@ -36,7 +36,7 @@ const aiLimiter = rateLimit({
     message: { success: false, message: "Too many requests, please slow down." },
 });
 app.use(["/api/rag", "/api/generate"], aiLimiter);
-app.use(["/api/poster/generate", "/api/logo/generate", "/api/report/generate", "/api/email/generate"], aiLimiter);
+app.use(["/api/poster/generate", "/api/logo/generate", "/api/report/generate", "/api/report/generate-latex", "/api/report/compile", "/api/email/generate"], aiLimiter);
 
 // Routes
 app.use("/api/email", emailRoutes);

@@ -43,6 +43,7 @@ const UserSchema = new mongoose.Schema({
             title: { type: String, required: true },
             rawInput: { type: String },
             content: { type: String, required: true },
+            format: { type: String, enum: ['markdown', 'latex'], default: 'markdown' },
             status: { type: String, enum: ['draft', 'final'], default: 'final' },
             createdAt: { type: Date, default: Date.now }
         }]

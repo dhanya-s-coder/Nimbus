@@ -1,0 +1,21 @@
+/* LaTeX report page */
+.rl-preview { position: relative; width: 100%; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden; background: #f3f4f6; min-height: 460px; display: flex; }  /* relative: the shared placeholder is absolutely positioned */
+.rl-frame { width: 100%; height: 640px; border: 0; background: #fff; transition: opacity .15s; }
+.rl-frame.dim { opacity: .55; }
+.rl-badge { font-size: .78rem; font-weight: 700; padding: 5px 12px; border-radius: 999px; }
+.rl-badge.ok { background: #dcfce7; color: #166534; }
+.rl-badge.busy { background: #fef3c7; color: #92400e; }
+.rl-badge.bad { background: #fee2e2; color: #991b1b; }
+.rl-error { margin-top: 10px; padding: 12px 14px; border-radius: 10px; background: #fef2f2; border: 1px solid #fecaca; color: #7f1d1d; font-size: .85rem; }
+.rl-error pre { margin: 8px 0; padding: 8px 10px; background: #fff; border-radius: 6px; max-height: 160px; overflow: auto; font-size: .76rem; white-space: pre-wrap; }
+.rl-error small { color: #991b1b; opacity: .85; }
+.rl-sources { font-size: .75rem; opacity: .7; margin: .6rem 0 0; }
+.rl-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.rl-source { margin-top: 22px; }
+.rl-source-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.rl-source-head h3 { margin: 0; font-size: 1rem; }
+.rl-source-head h3 small { margin-left: 6px; font-weight: 500; color: #64748b; }
+.rl-auto { display: inline-flex; gap: 6px; align-items: center; font-size: .8rem; color: #475569; cursor: pointer; }
+.rl-auto input { accent-color: #f97316; }
+.rl-editor { width: 100%; box-sizing: border-box; margin-top: 8px; padding: 14px; border: 1px solid #1e293b; border-radius: 12px; background: #0f172a; color: #e2e8f0; font-family: "Cascadia Code", "Fira Code", Consolas, monospace; font-size: .8rem; line-height: 1.55; resize: vertical; tab-size: 2; white-space: pre; overflow: auto; }
+.rl-editor:focus { outline: 2px solid #f97316; outline-offset: 1px; }

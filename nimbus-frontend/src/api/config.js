@@ -48,6 +48,8 @@ export const API_ENDPOINTS = {
   },
   REPORT: {
     GENERATE: `${API_BASE_URL}/api/report/generate`,
+    GENERATE_LATEX: `${API_BASE_URL}/api/report/generate-latex`,
+    COMPILE: `${API_BASE_URL}/api/report/compile`,
     SAVE: `${API_BASE_URL}/api/report/save`,
     HISTORY: `${API_BASE_URL}/api/report/history`,
     ACTIVITY: `${API_BASE_URL}/api/report/activity`,

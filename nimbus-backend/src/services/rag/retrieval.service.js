@@ -1,5 +1,9 @@
 import { getSupabase } from '../../config/supabase.js';
 import { embedQuery } from './embedding.service.js';
+import { SOURCE_TYPES } from './ingest.service.js';
+
+// Poster style references only inform poster backgrounds; they must never leak into reports, emails or autofilled facts.
+const DEFAULT_TYPES = SOURCE_TYPES.filter((t) => t !== 'poster_style');
 
 // Calibrated on Gemini 768-d embeddings: related text scores ~0.63-0.75, unrelated <= ~0.60.
 const minSimilarity = () => Number(process.env.RAG_MIN_SIMILARITY) || 0.6;
@@ -22,7 +26,7 @@ export const searchKnowledge = async ({ ownerId, query, k = 6, types = null, min
         query_text: q,
         match_count: Math.min(Math.max(k, 1), 20),
         p_owner: ownerId,
-        p_types: types && types.length ? types : null,
+        p_types: types && types.length ? types : DEFAULT_TYPES,
     });
     if (error) throw error;
     if (!data?.length) return [];

@@ -81,6 +81,7 @@ const transformActivities = (activities) => {
         posterStyle: activity.posterStyle,
         // Report specific data
         reportType: activity.reportType,
+        format: activity.format,
         rawInput: activity.rawInput,
         rawTitle: activity.title, // Preserving raw title for editing
     }));

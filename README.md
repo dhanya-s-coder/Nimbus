@@ -49,6 +49,7 @@ In an academic environment, administrative work often consumes a significant por
 - **Export**: Generated logo content can be exported to the user's local system.
 
 ### Report Generation Agent
+- **LaTeX reports**: notes (plus facts from your Knowledge Base) become a structured, professionally typeset report (header with logo, summary box, tables, action items, page numbers). The PDF preview is shown in the page, the **LaTeX source is editable below it**, and it recompiles as you type. Download the PDF or the `.tex` file.
 - **Administrative Synthesis**: Raw notes are converted into structured reports such as Meeting Minutes, Event Summaries, and Monthly Progress updates.
 - **AI Generation**: Reports are generated using AI to ensure clear hierarchy, concise points, and actionable summaries.
 - **Audits**: All generated reports are saved in the user's history with draft and final statuses for traceability.
@@ -100,6 +101,12 @@ Open **Knowledge Base** in the sidebar and paste facts Nimbus should use (brand 
 5. **Export**: Once generated, use the **Export** button to download a high-quality PNG.
 
 #### Report Generation Agent
+1. Pick a report type, enter a title and paste your notes or data.
+2. Click **Generate Report**. The PDF appears in a few seconds.
+3. Scroll down to edit the **LaTeX source**; the preview updates automatically (or press **Recompile** / Ctrl+Enter). Compile errors are shown with the log, and the last good preview stays visible.
+4. **Download PDF**, **Download .tex**, or **Save Draft / Finalize** (the source is saved so you can reopen and keep editing).
+
+Legacy notes for the older text version:
 1. **Source Data**: Paste your raw notes or meeting minutes.
 2. **Synthesis**: The AI organizes the content with clear headings and bullet points.
 3. **Generation**: Click **Generate Report**.
@@ -155,11 +162,18 @@ Open **Knowledge Base** in the sidebar and paste facts Nimbus should use (brand 
     ```
 3.  Copy `.env.example` to `.env` and fill it in (Mongo, JWT secrets, SMTP, Cloudinary, `GEMINI_API_KEY`, an image provider key such as `HF_API_KEY` or `POLLINATIONS_API_KEY`, and optionally `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY`). Every setting is documented in the file.
 3b. **Knowledge Base (optional)**: create a Supabase project, then run `nimbus-backend/supabase/migrations/001_rag.sql` once in the Supabase SQL Editor. Without Supabase the app works normally, just without retrieval.
-4.  Start the server:
+4.  **LaTeX reports (Tectonic)**: install the [Tectonic](https://tectonic-typesetting.github.io/) engine, then warm its cache once:
+    - Windows: download `tectonic-*-x86_64-pc-windows-msvc.zip` from the [releases page](https://github.com/tectonic-typesetting/tectonic/releases), unzip `tectonic.exe` into `nimbus-backend/tools/tectonic/` (or put it on your PATH / set `TECTONIC_PATH`).
+    - macOS / Linux: `brew install tectonic` or the install script on the Tectonic site.
+    ```bash
+    npm run latex:warmup   # first run downloads LaTeX packages (a few minutes), later compiles take ~1 s
+    ```
+    Compiles run sandboxed (`--untrusted`, temp folder, time limit, blocked file/shell commands, closed package allow-list). In Docker, install Tectonic in the image and run the same warm-up.
+5.  Start the server:
     ```bash
     npm run dev
     ```
-5.  Run the tests: `npm test`
+6.  Run the tests: `npm test`
 
 ### Frontend Installation
 1.  Navigate to the frontend folder:

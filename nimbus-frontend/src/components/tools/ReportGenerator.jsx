@@ -1,163 +1,169 @@
-import React, { useState, useRef, useEffect } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import React, { useState, useRef, useEffect, useCallback } from "react";
+import { useLocation } from "react-router-dom";
 import { API_ENDPOINTS, fetchWithAuth } from "../../api/config";
 import { useHistory } from "../../context/HistoryContext";
 import { toast } from "../../utils/toast";
 import "./tools.css";
+import "./report-latex.css";
 import RecentActivity from "../common/RecentActivity";
-import { FiFileText, FiSave } from "react-icons/fi";
+import { FiFileText, FiSave, FiRefreshCw, FiDownload } from "react-icons/fi";
+
+const REPORT_TYPES = ["Meeting Minutes", "Event Summary", "Monthly Progress", "Project Proposal", "Academic Report", "Other"];
+const AUTO_COMPILE_DELAY = 1800;
+
+const downloadBlob = (blob, filename) => {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+};
 
 export default function ReportGenerator() {
-    const [sources, setSources] = useState([]);
     const { refreshHistory } = useHistory();
     const location = useLocation();
 
     const [reportType, setReportType] = useState("Meeting Minutes");
     const [title, setTitle] = useState("");
     const [rawInput, setRawInput] = useState("");
-    const [reportContent, setReportContent] = useState("");
+    const [sources, setSources] = useState([]);
+
+    const [latex, setLatex] = useState("");
+    const [pdfUrl, setPdfUrl] = useState("");
+    const [pdfBlob, setPdfBlob] = useState(null);
+    const [compileState, setCompileState] = useState("idle"); // idle | compiling | ok | error
+    const [compileError, setCompileError] = useState(null);   // { message, log }
     const [isGenerating, setIsGenerating] = useState(false);
-    const editorRef = useRef(null);
+    const [autoCompile, setAutoCompile] = useState(true);
+
+    const compileSeq = useRef(0);
+    const lastCompiled = useRef("");
+    const urlRef = useRef("");
+
+    useEffect(() => () => { if (urlRef.current) URL.revokeObjectURL(urlRef.current); }, []);
+
+    /** Compile `source` on the server (Tectonic) and show the PDF. Stale responses are ignored. */
+    const compile = useCallback(async (source) => {
+        if (!source.trim()) return;
+        const seq = ++compileSeq.current;
+        setCompileState("compiling");
+        try {
+            const res = await fetchWithAuth(API_ENDPOINTS.REPORT.COMPILE, { method: "POST", body: JSON.stringify({ latex: source }) });
+            if (seq !== compileSeq.current) return;
+            if (res.ok && (res.headers.get("content-type") || "").includes("application/pdf")) {
+                const blob = await res.blob();
+                if (seq !== compileSeq.current) return;
+                if (urlRef.current) URL.revokeObjectURL(urlRef.current);
+                urlRef.current = URL.createObjectURL(blob);
+                lastCompiled.current = source;
+                setPdfBlob(blob);
+                setPdfUrl(urlRef.current);
+                setCompileError(null);
+                setCompileState("ok");
+            } else {
+                const data = await res.json().catch(() => ({}));
+                lastCompiled.current = source;
+                setCompileError({ message: data.message || `Compile failed (HTTP ${res.status})`, log: data.log || "" });
+                setCompileState("error");
+            }
+        } catch (err) {
+            if (seq !== compileSeq.current) return;
+            setCompileError({ message: err.message || "Could not reach the server", log: "" });
+            setCompileState("error");
+        }
+    }, []);
+
+    // recompile automatically shortly after the user stops typing in the source editor
+    useEffect(() => {
+        if (!autoCompile || !latex || latex === lastCompiled.current || isGenerating) return undefined;
+        const t = setTimeout(() => compile(latex), AUTO_COMPILE_DELAY);
+        return () => clearTimeout(t);
+    }, [latex, autoCompile, isGenerating, compile]);
 
     useEffect(() => {
-        if (location.state && location.state.Data) {
-            loadReport(location.state.Data);
-        }
-    }, [location.state]);
-
-    const loadReport = (item) => {
+        const item = location.state?.Data;
+        if (!item) return;
         setReportType(item.reportType || "Meeting Minutes");
         setTitle(item.rawTitle || item.title || "");
         setRawInput(item.rawInput || "");
-        setReportContent(item.content || "");
-        if (editorRef.current) {
-            editorRef.current.innerText = item.content || "";
+        if (item.format === "latex" && item.content) {
+            setLatex(item.content);
+            compile(item.content);
+            toast.success("Report loaded");
+        } else {
+            // older reports were plain text: reuse their text as notes so a LaTeX version can be generated
+            setLatex("");
+            setPdfUrl("");
+            setRawInput(item.rawInput || item.content || "");
+            toast.info("This is an older text report. Click Generate to create the LaTeX version.");
         }
-        toast.success("Report loaded successfully");
-    };
-
-    const reportTypes = [
-        "Meeting Minutes",
-        "Event Summary",
-        "Monthly Progress",
-        "Project Proposal",
-        "Academic Report",
-        "Other"
-    ];
+    }, [location.state, compile]);
 
     const handleGenerate = async () => {
-        if (!title.trim()) {
-            toast.warning("Please enter a report title.");
-            return;
-        }
-        if (!rawInput.trim()) {
-            toast.warning("Please enter raw notes or input for the report.");
-            return;
-        }
+        if (!title.trim()) return toast.warning("Please enter a report title.");
+        if (!rawInput.trim()) return toast.warning("Please enter your notes or data for the report.");
 
-        setReportContent("");
-        setSources([]);
         setIsGenerating(true);
-        if (editorRef.current) editorRef.current.innerText = "";
-
+        setSources([]);
+        setCompileError(null);
         try {
-            const response = await fetchWithAuth(API_ENDPOINTS.REPORT.GENERATE, {
-                method: "POST",
-                body: JSON.stringify({ reportType, title, rawInput }),
-            });
-
-            if (!response.ok) {
-                throw new Error(`HTTP Error: ${response.status}`);
-            }
-
-            const data = await response.json();
-
-            if (data.success && data.data?.content) {
-                setSources(data.data.sources || []);
-                streamText(data.data.content);
-                toast.success(data.message || "Report generated!");
-            } else {
-                setReportContent(data.message || "Error generating report.");
-                setIsGenerating(false);
-            }
-        } catch (error) {
-            console.error("Error:", error);
-            toast.error("Failed to generate report");
+            const res = await fetchWithAuth(API_ENDPOINTS.REPORT.GENERATE_LATEX, { method: "POST", body: JSON.stringify({ reportType, title, rawInput }) });
+            const data = await res.json();
+            if (!res.ok || !data.success) throw new Error(data.error || data.message || `HTTP ${res.status}`);
+            setSources(data.data.sources || []);
+            setLatex(data.data.latex);
+            await compile(data.data.latex);
+            toast.success("Report ready");
+        } catch (err) {
+            toast.error(err.message || "Failed to generate report");
+        } finally {
             setIsGenerating(false);
         }
     };
 
-    const streamText = (fullText) => {
-        let index = -1;
-        setReportContent("");
-        if (editorRef.current) editorRef.current.innerText = "";
-
-        const interval = setInterval(() => {
-            index++;
-            if (index < fullText.length) {
-                const char = fullText.charAt(index);
-                setReportContent((prev) => prev + char);
-                if (editorRef.current) {
-                    editorRef.current.innerText = (editorRef.current.innerText || "") + char;
-                }
-            } else {
-                clearInterval(interval);
-                setIsGenerating(false);
-            }
-        }, 10);
-    };
-
-    const handleSave = async (status = 'final') => {
-        const finalContent = editorRef.current ? editorRef.current.innerText : reportContent;
-
-        if (!title.trim()) {
-            toast.warning("Please enter a title.");
-            return;
-        }
-        if (!finalContent.trim()) {
-            toast.warning("Please generate or enter report content.");
-            return;
-        }
-
+    const handleSave = async (status = "final") => {
+        if (!title.trim()) return toast.warning("Please enter a title.");
+        if (!latex.trim()) return toast.warning("Generate a report first.");
         try {
-            const response = await fetchWithAuth(API_ENDPOINTS.REPORT.SAVE, {
+            const res = await fetchWithAuth(API_ENDPOINTS.REPORT.SAVE, {
                 method: "POST",
-                body: JSON.stringify({
-                    reportType,
-                    title,
-                    rawInput,
-                    content: finalContent,
-                    status
-                }),
+                body: JSON.stringify({ reportType, title, rawInput, content: latex, format: "latex", status }),
             });
-
-            const data = await response.json();
-
+            const data = await res.json();
             if (data.success) {
-                toast.success(data.message || (status === 'final' ? "Report saved to history!" : "Draft saved!"));
+                toast.success(status === "final" ? "Report saved to history!" : "Draft saved!");
                 refreshHistory();
             } else {
                 toast.error(data.message || "Failed to save report.");
             }
-        } catch (error) {
+        } catch {
             toast.error("An error occurred while saving.");
         }
     };
 
-    const handleDownload = () => {
-        const finalContent = editorRef.current ? editorRef.current.innerText : reportContent;
-        if (!finalContent) {
-            toast.warning("Nothing to download");
-            return;
+    const safeName = (title || "Report").replace(/[^\w\- ]+/g, "").trim() || "Report";
+    const downloadPdf = async () => {
+        if (compileState === "compiling") return toast.info("Compiling… try again in a moment.");
+        if (!pdfBlob || lastCompiled.current !== latex || compileState === "error") {
+            await compile(latex);
+            return toast.info("Recompiled — click Download PDF again.");
         }
-        const blob = new Blob([finalContent], { type: "text/plain;charset=utf-8" });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = `Report: ${title || 'Untitled'}(By Nimbus).txt`;
-        a.click();
-        URL.revokeObjectURL(url);
+        downloadBlob(pdfBlob, `${safeName} (By Nimbus).pdf`);
     };
+    const downloadTex = () => {
+        if (!latex.trim()) return toast.warning("Nothing to download");
+        downloadBlob(new Blob([latex], { type: "application/x-tex;charset=utf-8" }), `${safeName}.tex`);
+    };
+
+    const statusBadge = {
+        idle: null,
+        compiling: <span className="rl-badge busy">⏳ Compiling…</span>,
+        ok: <span className="rl-badge ok">✓ PDF ready</span>,
+        error: <span className="rl-badge bad">⚠ Compile error</span>,
+    }[compileState];
 
     return (
         <div className="tool-page">
@@ -166,53 +172,35 @@ export default function ReportGenerator() {
                     <div className="panel-inner">
                         <header className="tool-header">
                             <h2 className="tool-title">Prepare Report</h2>
-                            <p className="tool-subtitle">Select type and provide raw notes to generate</p>
+                            <p className="tool-subtitle">Give your notes or data — Nimbus writes a LaTeX report and compiles it to PDF</p>
                         </header>
 
                         <div className="tool-form">
                             <div className="tool-form-group">
                                 <label>Report Type</label>
-                                <select
-                                    value={reportType}
-                                    onChange={(e) => setReportType(e.target.value)}
-                                >
-                                    {reportTypes.map(type => (
-                                        <option key={type} value={type}>{type}</option>
-                                    ))}
+                                <select value={reportType} onChange={(e) => setReportType(e.target.value)}>
+                                    {REPORT_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
                                 </select>
                             </div>
 
                             <div className="tool-form-group">
                                 <label>Report Title</label>
-                                <input
-                                    type="text"
-                                    placeholder="e.g. Faculty Meeting - Dec 2025"
-                                    value={title}
-                                    onChange={(e) => setTitle(e.target.value)}
-                                />
+                                <input type="text" placeholder="e.g. Faculty Meeting - Dec 2025" value={title} onChange={(e) => setTitle(e.target.value)} />
                             </div>
 
                             <div className="tool-form-group">
-                                <label>Raw Notes / Input</label>
+                                <label>Notes / Data</label>
                                 <textarea
-                                    placeholder='Paste your rough notes, bullet points, or meeting transcript here...'
+                                    placeholder="Paste rough notes, numbers, bullet points or a transcript. Facts from your Knowledge Base are added automatically."
                                     value={rawInput}
                                     onChange={(e) => setRawInput(e.target.value)}
-                                    rows={6}
+                                    rows={8}
                                 />
                             </div>
 
                             <div className="tool-actions">
-                                <button
-                                    className="tool-btn-generate"
-                                    onClick={handleGenerate}
-                                    disabled={isGenerating}
-                                >
-                                    {isGenerating ? (
-                                        <span className="loading-dots">Generating<span>.</span><span>.</span><span>.</span></span>
-                                    ) : (
-                                        <>✨ Generate Report</>
-                                    )}
+                                <button className="tool-btn-generate" onClick={handleGenerate} disabled={isGenerating}>
+                                    {isGenerating ? <span className="loading-dots">Writing report<span>.</span><span>.</span><span>.</span></span> : <>✨ Generate Report</>}
                                 </button>
                             </div>
                         </div>
@@ -227,42 +215,68 @@ export default function ReportGenerator() {
                     <div className="panel-inner">
                         <header className="tool-header space-between">
                             <h2 className="tool-title">Generated Report</h2>
-                            {reportContent && <span className="premium-badge">Editable</span>}
+                            {statusBadge}
                         </header>
 
-                        <div className="tool-preview-container">
-                            <div
-                                className="tool-preview-editor"
-                                contentEditable={true}
-                                ref={editorRef}
-                                suppressContentEditableWarning
-                            >
-                            </div>
-                            {!reportContent && !isGenerating && (
+                        <div className="rl-preview">
+                            {pdfUrl ? (
+                                <iframe title="Report preview" src={`${pdfUrl}#view=FitH`} className={`rl-frame ${compileState === "compiling" ? "dim" : ""}`} />
+                            ) : (
                                 <div className="tool-preview-placeholder">
-                                    <div className="empty-icon-lg">📊</div>
-                                    <p>Generate a report to see the magic here</p>
+                                    <div className="empty-icon-lg">📄</div>
+                                    <p>{isGenerating ? "Writing your report…" : "Your report preview will appear here"}</p>
                                 </div>
                             )}
                         </div>
 
-                        {sources.length > 0 && (
-                            <p style={{ fontSize: '0.75rem', opacity: 0.7, margin: '0.5rem 0 0' }}>
-                                🧠 Sources used: {sources.map((s) => s.title).join(', ')}
-                            </p>
+                        {compileState === "error" && compileError && (
+                            <div className="rl-error" role="alert">
+                                <strong>{compileError.message}</strong>
+                                {compileError.log && <pre>{compileError.log}</pre>}
+                                <small>The preview above shows the last version that compiled. Fix the LaTeX below and it will recompile.</small>
+                            </div>
                         )}
 
-                        <div className="tool-preview-actions">
-                            <button className="tool-btn-secondary" onClick={() => handleSave('draft')}>
+                        {sources.length > 0 && (
+                            <p className="rl-sources">🧠 Sources used: {sources.map((s) => s.title).join(", ")}</p>
+                        )}
+
+                        <div className="rl-actions">
+                            <button className="tool-btn-secondary" onClick={() => compile(latex)} disabled={!latex || compileState === "compiling"}>
+                                <FiRefreshCw /> <span>Recompile</span>
+                            </button>
+                            <button className="tool-btn-final" onClick={downloadPdf} disabled={!latex}>
+                                <FiDownload /> <span>Download PDF</span>
+                            </button>
+                            <button className="tool-btn-secondary" onClick={downloadTex} disabled={!latex}>
+                                <span>Download .tex</span>
+                            </button>
+                            <button className="tool-btn-secondary" onClick={() => handleSave("draft")} disabled={!latex}>
                                 <FiFileText /> <span>Save Draft</span>
                             </button>
-                            <button className="tool-btn-secondary" onClick={() => handleSave('final')}>
+                            <button className="tool-btn-secondary" onClick={() => handleSave("final")} disabled={!latex}>
                                 <FiSave /> <span>Finalize</span>
                             </button>
-                            <button className="tool-btn-final" onClick={handleDownload}>
-                                <span>Download as PDF (Print)</span>
-                            </button>
                         </div>
+
+                        <section className="rl-source">
+                            <div className="rl-source-head">
+                                <h3>LaTeX source <small>editable</small></h3>
+                                <label className="rl-auto">
+                                    <input type="checkbox" checked={autoCompile} onChange={(e) => setAutoCompile(e.target.checked)} />
+                                    Auto-compile after typing
+                                </label>
+                            </div>
+                            <textarea
+                                className="rl-editor"
+                                spellCheck={false}
+                                value={latex}
+                                placeholder="The generated LaTeX appears here. Edit it freely, then click Recompile (or Ctrl+Enter)."
+                                onChange={(e) => setLatex(e.target.value)}
+                                onKeyDown={(e) => { if ((e.ctrlKey || e.metaKey) && e.key === "Enter") { e.preventDefault(); compile(latex); } }}
+                                rows={24}
+                            />
+                        </section>
                     </div>
                 </div>
             </div>
