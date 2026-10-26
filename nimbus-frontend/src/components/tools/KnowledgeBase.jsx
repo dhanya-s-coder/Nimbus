@@ -42,25 +42,30 @@ const KnowledgeBase = () => {
         fetchWithAuth(API_ENDPOINTS.RAG.CAPABILITIES).then((r) => r.json()).then((d) => setIsAdmin(!!d?.data?.isAdmin)).catch(() => {});
     }, []);
 
-    const uploadFile = async (file) => {
+    // several files at once: uploaded one after another so the embedding quota is not hit in a burst
+    const uploadFiles = async (files) => {
         setSaving(true);
-        try {
-            const fd = new FormData();
-            fd.append('file', file);
-            fd.append('type', form.type);
-            if (form.title.trim()) fd.append('title', form.title.trim());
-            if (isAdmin && shareAll) fd.append('scope', 'global');
-            const res = await fetchWithAuth(API_ENDPOINTS.RAG.INGEST_FILE, { method: 'POST', body: fd });
-            const data = await res.json();
-            if (!res.ok || !data.success) throw new Error(data.error || data.message);
-            toast.success(data.data.duplicate ? 'Already in your knowledge base' : `Indexed ${data.data.chunks} passages from ${file.name}`);
-            setForm({ ...form, title: '' });
-            load();
-        } catch (err) {
-            toast.error(err.message || 'Could not read that file');
-        } finally {
-            setSaving(false);
+        let ok = 0;
+        let dup = 0;
+        for (const file of files) {
+            try {
+                const fd = new FormData();
+                fd.append('file', file);
+                fd.append('type', form.type);
+                if (files.length === 1 && form.title.trim()) fd.append('title', form.title.trim());
+                if (isAdmin && shareAll) fd.append('scope', 'global');
+                const res = await fetchWithAuth(API_ENDPOINTS.RAG.INGEST_FILE, { method: 'POST', body: fd });
+                const data = await res.json();
+                if (!res.ok || !data.success) throw new Error(data.error || data.message);
+                if (data.data.duplicate) dup += 1; else ok += 1;
+            } catch (err) {
+                toast.error(`${file.name}: ${err.message || 'could not read that file'}`);
+            }
         }
+        if (ok || dup) toast.success(`${ok} file${ok === 1 ? '' : 's'} added${dup ? `, ${dup} already there` : ''}`);
+        setForm({ ...form, title: '' });
+        setSaving(false);
+        load();
     };
 
     // reference poster -> vision model -> style card (design craft only; never copied)
@@ -152,15 +157,15 @@ const KnowledgeBase = () => {
                                 {saving ? 'Indexing...' : 'Add to Knowledge Base'}
                             </button>
                             <button className="tool-btn-secondary" style={{ width: '100%', marginTop: 8, justifyContent: 'center' }} onClick={() => fileRef.current?.click()} disabled={saving}>
-                                📄 Upload PDF / DOCX / TXT
+                                📄 Upload files (PDF / DOCX / TXT, several at once)
                             </button>
                             <button className="tool-btn-secondary" style={{ width: '100%', marginTop: 8, justifyContent: 'center' }} onClick={() => posterRef.current?.click()} disabled={saving} title="Nimbus studies the design (layout, colours, type) and uses it only as inspiration">
                                 🖼 Add a reference poster (style only)
                             </button>
                             <input ref={posterRef} type="file" hidden accept="image/*"
                                 onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadPoster(f); e.target.value = ''; }} />
-                            <input ref={fileRef} type="file" hidden accept=".pdf,.docx,.txt,.md,.csv"
-                                onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadFile(f); e.target.value = ''; }} />
+                            <input ref={fileRef} type="file" hidden multiple accept=".pdf,.docx,.txt,.md,.csv"
+                                onChange={(e) => { const fs = [...(e.target.files || [])]; if (fs.length) uploadFiles(fs); e.target.value = ''; }} />
                         </section>
                     </div>
                 </div>

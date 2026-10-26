@@ -91,6 +91,8 @@ The Dashboard is your control center.
 6. **Export**: **Download PNG**, **JPG** or **PDF**.
 
 #### Knowledge Base
+**Bulk loading shared knowledge:** put `.md`, `.txt`, `.csv`, `.pdf` or `.docx` files in `nimbus-backend/knowledge/` (folders brand, events, policies, contacts, templates, notes set the type; see the README in that folder) and run `npm run seed:knowledge` (add `-- --dry-run` to preview). Several files can also be uploaded at once on the Knowledge Base page.
+
 Open **Knowledge Base** in the sidebar and paste facts Nimbus should use (brand colours, past events, contacts). They power poster autofill and ground reports and emails ("Sources used" is shown under the output).
 
 #### Logo Generation Agent

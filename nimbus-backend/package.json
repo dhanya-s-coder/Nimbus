@@ -8,7 +8,8 @@
         "start": "node src/server.js",
         "dev": "nodemon src/server.js",
         "test": "node --test",
-        "latex:warmup": "node scripts/warm-latex.mjs"
+        "latex:warmup": "node scripts/warm-latex.mjs",
+        "seed:knowledge": "node scripts/seed-knowledge.mjs"
     },
     "keywords": [],
     "author": "",
