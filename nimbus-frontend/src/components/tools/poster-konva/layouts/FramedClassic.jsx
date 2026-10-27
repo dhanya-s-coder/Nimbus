@@ -28,13 +28,20 @@ const FramedClassic = ({ data, palette }) => {
 
     const foot = footerNode({ text: footer, x: PAD, w: CW, bottom: H - FRAME - 16, palette, font: f.body, size: rem(0.5), align: 'center', line: false });
 
+    // QR codes get their own strip above the footer so they never sit on top of the text
+    const qrs = [qr1, qr2].filter(Boolean);
+    const QR_SIZE = 56;
+    const QR_PLATE = QR_SIZE + 10;
+    const qrStripH = qrs.length ? QR_PLATE + 5 + 8 * 1.2 + 6 : 0;
+    const qrTop = foot.top - (qrs.length ? 8 : 0) - qrStripH;
+
     // info as columns separated by hairlines
     const infoH = infoItems.length ? 52 : 0;
-    const infoTop = foot.top - 14 - infoH;
+    const infoTop = qrTop - 14 - infoH;
     const colW = infoItems.length ? CW / infoItems.length : CW;
 
-    const speakerBlock = (speakerName || speakerPhoto) && (() => {
-        const av = speakerPhoto ? 150 : 0;
+    const makeSpeakerBlock = (avSize) => (speakerName || speakerPhoto) && (() => {
+        const av = speakerPhoto ? avSize : 0;
         const nameH = speakerName ? rem(1.05) * 1.2 + (speakerDesignation ? 4 + rem(0.7) * 1.2 : 0) : 0;
         const h = av + (av && nameH ? 10 : 0) + nameH;
         return { h, mb: 12, key: 'spk', render: (y) => (
@@ -54,16 +61,21 @@ const FramedClassic = ({ data, palette }) => {
         ) };
     })();
 
-    const blocks = [
+    const bodyTop = FRAME + 12 + 36 + 10;
+    const bodyBottom = infoTop - 14;
+    const buildBlocks = (avSize) => [
         kickerBlock({ text: organizer, x: PAD, w: CW, palette, font: f.body, size: rem(0.6), align: 'center', mb: 12, key: 'org' }),
         { h: 9, mb: 14, key: 'orn', render: (y) => <Ornament x={W / 2 - CW * 0.275} y={y + 4} w={CW * 0.55} palette={palette} /> },
         titleBlock({ text: title, x: PAD, w: CW, font: f.title, weight: '700', maxSize: 54, minSize: 22, maxLines: 4, align: 'center', lineHeight: 1.05, letterSpacing: 0.5, palette, mb: 10 }),
         textBlock({ text: subtitle, x: PAD, w: CW, font: f.body, size: rem(0.95), italic: true, align: 'center', fill: palette.secondary, mb: 14, key: 'sub' }),
-        speakerBlock,
+        makeSpeakerBlock(avSize),
         descB,
         extraRowsBlock({ items: extraItems, x: PAD + CW * 0.05, w: CW * 0.9, palette, font: f.body, mb: 0, size: rem(0.64) }),
     ];
-    const body = stackCentered(blocks, FRAME + 12 + 36 + 10, infoTop - 14);
+    const blockTotal = (bs) => { const l = bs.filter(Boolean); return l.reduce((n, b) => n + b.h + (b.mb || 0), 0) - (l.length ? l[l.length - 1].mb || 0 : 0); };
+    // shrink the speaker photo step by step until everything fits above the info row
+    const avSize = [150, 120, 96, 72, 56].find((s) => blockTotal(buildBlocks(s)) <= bodyBottom - bodyTop) ?? 56;
+    const body = stackCentered(buildBlocks(avSize), bodyTop, bodyBottom);
 
     return (
         <Group listening={false}>
@@ -92,8 +104,8 @@ const FramedClassic = ({ data, palette }) => {
                 </Group></Editable>
             )}
             {foot.node}
-            {qr1 && <QrBlock x={FRAME + 18} y={H - FRAME - 18 - 96} size={64} qr={qr1} eid="qr1" palette={palette} labelSize={6} />}
-            {qr2 && <QrBlock x={W - FRAME - 18 - 74} y={H - FRAME - 18 - 96} size={64} qr={qr2} eid="qr2" palette={palette} labelSize={6} />}
+            {qr1 && <QrBlock x={W / 2 - (qr2 ? QR_PLATE + 12 : QR_PLATE / 2)} y={qrTop} size={QR_SIZE} qr={qr1} eid="qr1" palette={palette} labelSize={7} />}
+            {qr2 && <QrBlock x={W / 2 + (qr1 ? 12 : -QR_PLATE / 2)} y={qrTop} size={QR_SIZE} qr={qr2} eid="qr2" palette={palette} labelSize={7} />}
             <Circle x={W / 2} y={H - FRAME - 6} radius={0.1} />
         </Group>
     );

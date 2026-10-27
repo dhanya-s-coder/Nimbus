@@ -38,7 +38,11 @@ const BoldHero = ({ data, palette }) => {
     const foot = footerNode({ text: footer, x: PAD, w: CW, bottom: H - 18, palette, font: f.body, size: rem(0.46), line: false });
     const infoBar = infoRowBlock({ items: infoItems, x: PAD, w: CW, palette, font: f.body, glass: true });
     const barTop = foot.top - 12 - (infoBar?.h || 0);
-    const topEnd = PAD + 34 + 14;
+    // QR codes sit in the header (below the hackathon badge) and the hero content starts underneath them
+    const QR_SIZE = 56;
+    const qrY = hackathon ? 68 : PAD - 4;
+    const qrBottom = qr1 || qr2 ? qrY + QR_SIZE + 10 + 5 + 7 * 1.2 + 8 : 0;
+    const topEnd = Math.max(PAD + 34 + 14, qrBottom);
 
     const heroBlocks = [
         organizer && textBlock({ text: `Presented by ${organizer}`, x: PAD, w: CW, font: f.body, size: rem(0.62), weight: '700', letterSpacing: 2.5, align: 'center', fill: palette.accent, upper: true, mb: 8, key: 'org' }),
@@ -108,8 +112,8 @@ const BoldHero = ({ data, palette }) => {
             {hero.nodes}
             {infoBar && <Editable id="info">{infoBar.render(barTop)}</Editable>}
             {foot.node}
-            {qr1 && <QrBlock x={W - PAD - 92} y={80} size={72} qr={qr1} eid="qr1" palette={palette} />}
-            {qr2 && <QrBlock x={W - PAD - 92 - 92} y={80} size={72} qr={qr2} eid="qr2" palette={palette} />}
+            {qr1 && <QrBlock x={W - PAD - (QR_SIZE + 10)} y={qrY} size={QR_SIZE} qr={qr1} eid="qr1" palette={palette} labelSize={7} />}
+            {qr2 && <QrBlock x={W - PAD - (QR_SIZE + 10) * 2 - 14} y={qrY} size={QR_SIZE} qr={qr2} eid="qr2" palette={palette} labelSize={7} />}
         </Group>
     );
 };
