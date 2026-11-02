@@ -1,10 +1,10 @@
 import React from 'react';
 import { useAuth } from '../../../context/AuthContext';
 import { Link } from 'react-router-dom';
-import { FiLogOut } from 'react-icons/fi';
+import { FiLogOut, FiMenu } from 'react-icons/fi';
 import './header.css';
 
-const Header = ({ title }) => {
+const Header = ({ title, onMenu, menuOpen }) => {
     const { user, role, logout } = useAuth();
 
     const getInitials = () => {
@@ -21,6 +21,11 @@ const Header = ({ title }) => {
     return (
         <header className="common-header">
             <div className="header-title-wrapper">
+                {onMenu && (
+                    <button className="header-menu-btn" onClick={onMenu} aria-label={menuOpen ? 'Hide menu' : 'Show menu'} aria-expanded={!!menuOpen} title="Menu (Esc to close)">
+                        <FiMenu />
+                    </button>
+                )}
                 <h2 className="header-title">{title}</h2>
             </div>
 

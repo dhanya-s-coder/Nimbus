@@ -18,3 +18,11 @@
   margin: 0 auto;
   padding: 0 32px;
 }
+/* Slide-in menu: the sidebar can tuck away; on focus pages (e.g. the poster workspace) it overlays on demand. */
+.sidebar-fixed { transition: transform 0.28s ease, box-shadow 0.28s ease; }
+.layout-content-wrapper { transition: margin-left 0.28s ease, width 0.28s ease; }
+.app-layout.nav-closed .sidebar-fixed { transform: translateX(-100%); box-shadow: none; }
+.app-layout.nav-free .layout-content-wrapper { margin-left: 0; width: 100%; }
+.app-layout.nav-free .common-header { left: 0; }
+.nav-backdrop { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.45); z-index: 950; animation: nav-fade 0.2s ease; }
+@keyframes nav-fade { from { opacity: 0; } to { opacity: 1; } }
