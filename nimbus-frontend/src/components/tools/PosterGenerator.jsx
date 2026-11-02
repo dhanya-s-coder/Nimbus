@@ -2,10 +2,11 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { fetchWithAuth, API_ENDPOINTS } from '../../api/config';
 import { toast } from '../../utils/toast';
-import { FiCheckCircle, FiFileText } from 'react-icons/fi';
+import { FiCheckCircle, FiFileText, FiDownload, FiChevronDown } from 'react-icons/fi';
 import { useHistory } from '../../context/HistoryContext';
 import RecentActivity from '../common/RecentActivity';
 import './tools.css';
+import './poster-workspace.css';
 
 import PosterStage from './poster-konva/PosterStage';
 import PosterCustomizer from './poster-konva/PosterCustomizer';
@@ -13,6 +14,8 @@ import { SIZES, DEFAULT_SIZE } from './poster-konva/engine/constants';
 import { exportPosterBlob, exportPosterPdf, downloadBlob, fileToPhotoDataUrl } from './poster-konva/engine/exportPoster';
 import { getDesignByIndex, getDesignCount, getDesignRecipes } from './poster-konva/data/autoDesigner';
 import { normalizeFormData } from './poster-konva/data/normalizeFormData';
+import { applyContent, withoutElement } from './poster-konva/editor/content';
+import { isElementId, foldTransform, duplicate as duplicateIn, reorder as reorderIn, alignTo, starterElements, makeImage, makeBlock } from './poster-konva/editor/elements';
 
 const TEMPLATES = {
     academic: {
@@ -121,12 +124,46 @@ const PosterGenerator = () => {
     const future = useRef([]);
     const lastTextEdit = useRef(0);
     const [, bumpHistory] = useState(0);
+    // form panel: null = automatic (open until a poster exists, then it slides away); true/false = the user chose
+    const [formPref, setFormPref] = useState(null);
+    const stageBodyRef = useRef(null);
+    // reference posters from the Knowledge Base: used for a poster ONLY when picked here (default: none)
+    const [styleRefs, setStyleRefs] = useState([]);
+    const [styleRefId, setStyleRefId] = useState('');
+    useEffect(() => {
+        let alive = true;
+        (async () => {
+            try {
+                const res = await fetchWithAuth(API_ENDPOINTS.RAG.SOURCES);
+                const data = await res.json();
+                if (alive && res.ok && data.success) setStyleRefs((data.data || []).filter((s) => s.type === 'poster_style'));
+            } catch { /* knowledge base unavailable: no references to offer */ }
+        })();
+        return () => { alive = false; };
+    }, []);
+    const [lastSaved, setLastSaved] = useState(null); // previous poster, offered on the form (not shown automatically)
+    const [dlOpen, setDlOpen] = useState(false);
+    const dlRef = useRef(null);
+    useEffect(() => {
+        if (!dlOpen) return undefined;
+        const close = (e) => { if (dlRef.current && !dlRef.current.contains(e.target)) setDlOpen(false); };
+        document.addEventListener('mousedown', close);
+        return () => document.removeEventListener('mousedown', close);
+    }, [dlOpen]);
+    const [stageSize, setStageSize] = useState({ w: 0, h: 0 });
     // keep the whole poster (and the Customize panel under it) on screen: fit the preview to the window height
     const [viewportH, setViewportH] = useState(() => window.innerHeight);
     useEffect(() => {
         const onResize = () => setViewportH(window.innerHeight);
         window.addEventListener('resize', onResize);
         return () => window.removeEventListener('resize', onResize);
+    }, []);
+    useEffect(() => {
+        const el = stageBodyRef.current;
+        if (!el || typeof ResizeObserver === 'undefined') return undefined;
+        const ro = new ResizeObserver(([e]) => setStageSize({ w: Math.round(e.contentRect.width), h: Math.round(e.contentRect.height) }));
+        ro.observe(el);
+        return () => ro.disconnect();
     }, []);
     const [autofillSources, setAutofillSources] = useState(null);
 
@@ -135,8 +172,8 @@ const PosterGenerator = () => {
             const { templateType, formData: savedFormData, generatedImageUrl, posterStyle: savedStyle } = location.state.posterData;
             if (templateType) setSelectedTemplate(templateType);
             if (savedFormData) setFormData(savedFormData);
-            if (generatedImageUrl) {
-                setGeneratedImage(generatedImageUrl);
+            if (generatedImageUrl || savedStyle?.skeleton === 'blank') {
+                setGeneratedImage(generatedImageUrl || null);
                 // Saved posters may not contain the newer style metadata.
                 setPosterStyle(savedStyle || getDesignByIndex(templateType || 'academic', 0, {
                     colorPreference: savedFormData?.colorPreference,
@@ -146,28 +183,36 @@ const PosterGenerator = () => {
         } else {
             try {
                 const saved = JSON.parse(localStorage.getItem('nimbus-last-poster') || 'null');
-                if (saved?.generatedImage) {
-                    setSelectedTemplate(saved.selectedTemplate || 'academic');
-                    // Do not resurrect QR assets from an old local preview.
-                    const restoredForm = { ...(saved.formData || {}) };
-                    // Uploaded assets are local preview state. Never revive an old
-                    // speaker/event image when starting from the last poster.
-                    delete restoredForm.speakerPhoto;
-                    delete restoredForm.eventLogo;
-                    delete restoredForm.qr1Image;
-                    delete restoredForm.qr2Image;
-                    delete restoredForm.registrationUrl;
-                    setFormData(restoredForm);
-                    setGeneratedImage(saved.generatedImage);
-                    setPosterStyle(saved.posterStyle || getDesignByIndex(saved.selectedTemplate || 'academic', 0));
-                }
+                if (saved?.generatedImage || saved?.posterStyle?.skeleton === 'blank') setLastSaved(saved);
             } catch { /* ignore stale local preview */ }
         }
     }, [location.state]);
 
+    const resumeLast = () => {
+        const saved = lastSaved;
+        if (!saved) return;
+        setSelectedTemplate(saved.selectedTemplate || 'academic');
+        // Do not resurrect QR assets from an old local preview.
+        const restoredForm = { ...(saved.formData || {}) };
+        // Uploaded assets are local preview state. Never revive an old
+        // speaker/event image when starting from the last poster.
+        delete restoredForm.speakerPhoto;
+        delete restoredForm.eventLogo;
+        delete restoredForm.qr1Image;
+        delete restoredForm.qr2Image;
+        delete restoredForm.registrationUrl;
+        setFormData(restoredForm);
+        setGeneratedImage(saved.generatedImage || null);
+        setPosterStyle(saved.posterStyle || getDesignByIndex(saved.selectedTemplate || 'academic', 0));
+        setFormPref(null);
+        setLastSaved(null);
+    };
+    // dev QA only: /dev/editor?resume=1 opens straight into the editor
+    useEffect(() => { if (process.env.NODE_ENV !== 'production' && lastSaved && new URLSearchParams(window.location.search).get('resume')) resumeLast(); }, [lastSaved]); // eslint-disable-line react-hooks/exhaustive-deps
+
     useEffect(() => {
         // uploaded photos are data URLs (too big for localStorage) - only remember hosted images
-        if (generatedImage && posterStyle && !generatedImage.startsWith('data:')) {
+        if (posterStyle && (generatedImage ? !generatedImage.startsWith('data:') : posterStyle.skeleton === 'blank')) {
             try {
                 localStorage.setItem('nimbus-last-poster', JSON.stringify({ selectedTemplate, formData, generatedImage, posterStyle }));
             } catch { /* quota exceeded: ignore */ }
@@ -178,9 +223,19 @@ const PosterGenerator = () => {
     if (process.env.NODE_ENV !== 'production') window.__posterStyle = posterStyle; // dev/QA hook
     const currentTemplate = TEMPLATES[selectedTemplate];
     const designH = (SIZES[posterStyle?.custom?.size] || SIZES[DEFAULT_SIZE]).h;
-    const previewWidth = Math.round(Math.max(300, Math.min(600, ((viewportH - 400) * 600) / designH)));
+    const baseData = normalizeFormData(selectedTemplate, formData);
+    const posterData = applyContent(baseData, posterStyle?.custom?.content); // what the poster shows: the form + wording edited on the poster
+    const isBlank = posterStyle?.skeleton === 'blank';
+    const hasPoster = !!(posterStyle && (generatedImage || isBlank)); // a blank canvas needs no photo
+    const formOpen = formPref ?? !hasPoster;
+    // the poster gets its own column now: fit it to whatever room that column has
+    const fit = stageSize.w && stageSize.h
+        ? Math.min(stageSize.w - 48, ((stageSize.h - 48) * 600) / designH)
+        : ((viewportH - 400) * 600) / designH;
+    const previewWidth = Math.round(Math.max(260, Math.min(820, fit)));
 
     const handleTemplateChange = (templateId) => {
+        setFormPref(null);
         setSelectedTemplate(templateId);
         setFormData({});
         setGeneratedImage(null);
@@ -235,8 +290,18 @@ const PosterGenerator = () => {
             return;
         }
 
-        const keepCustom = posterStyle?.custom ? { ...posterStyle.custom, overrides: undefined } : undefined;   // size / font / colours / own text survive regeneration; moved positions don't
+        setFormPref(null); // after this poster is ready the form tucks away on its own
+        const keepCustom = posterStyle?.custom ? { ...posterStyle.custom, overrides: undefined, content: undefined } : undefined;   // size / font / colours / own text survive regeneration; moved positions don't
         past.current = []; future.current = [];
+        // Choose the layout first: the AI background is then painted for THIS layout (where its text and focal area go)
+        const rotationKey = `nimbus-design-rotation-${selectedTemplate}`;
+        const rotation = Number(localStorage.getItem(rotationKey) || 0);
+        localStorage.setItem(rotationKey, String(rotation + 1));
+        // Rotate locally on every regeneration so the visual layout changes predictably.
+        const selectedIndex = rotation % getDesignCount(selectedTemplate);
+        const design = getDesignByIndex(selectedTemplate, selectedIndex, {
+            colorPreference: formData.colorPreference,
+        });
         setIsGenerating(true);
         setError(null);
         setGeneratedImage(null);
@@ -248,7 +313,9 @@ const PosterGenerator = () => {
                 method: 'POST',
                 body: JSON.stringify({
                     templateType: selectedTemplate,
-                    formData
+                    formData,
+                    layout: design.skeleton,
+                    styleRefId: styleRefId || undefined
                 })
             });
 
@@ -278,15 +345,6 @@ const PosterGenerator = () => {
             const imageUrl = data.data.image.url;
             setGeneratedImage(imageUrl);
 
-            // Apply new poster-templates design
-            const rotationKey = `nimbus-design-rotation-${selectedTemplate}`;
-            const rotation = Number(localStorage.getItem(rotationKey) || 0);
-            localStorage.setItem(rotationKey, String(rotation + 1));
-            // Rotate locally on every regeneration so the visual layout changes predictably.
-            const selectedIndex = rotation % getDesignCount(selectedTemplate);
-            const design = getDesignByIndex(selectedTemplate, selectedIndex, {
-                colorPreference: formData.colorPreference,
-            });
             // Default to the colours of the AI-generated background so text/panels always match the photo
             // (the curated palettes stay available in the Customize panel).
             const styled = { ...design, paletteId: 'auto' };
@@ -305,7 +363,7 @@ const PosterGenerator = () => {
     // -- Customize panel actions --------------------------------------------
     const snap = () => {
         const c = styleRef.current?.custom || {};
-        return { overrides: c.overrides || {}, extras: c.extras || [] };
+        return { overrides: c.overrides || {}, extras: c.extras || [], typography: c.typography, elements: c.elements || [], bg: c.bg, content: c.content };
     };
     const record = () => {
         past.current.push(snap());
@@ -328,18 +386,33 @@ const PosterGenerator = () => {
         }
     };
     const updateRecipe = (recipe) => {
-        const changedLayout = recipe.skeleton !== styleRef.current?.skeleton;
-        if (changedLayout && hasOverrides()) record();
-        setPosterStyle((p) => ({ ...recipe, custom: { ...(p?.custom || {}), ...(changedLayout ? { overrides: {} } : {}) } }));
+        const prev = styleRef.current || {};
+        // a different skeleton, decoration, frame or background means different pieces: moved/hidden state would not apply
+        const changedLayout = recipe.skeleton !== prev.skeleton || recipe.decoration !== prev.decoration || recipe.frame !== prev.frame || recipe.background !== prev.background;
+        const leavingBlank = styleRef.current?.skeleton === 'blank' && recipe.skeleton !== 'blank';
+        if (changedLayout && (hasOverrides() || leavingBlank)) record();
+        setPosterStyle((p) => ({ ...recipe, custom: { ...(p?.custom || {}), ...(changedLayout ? { overrides: {} } : {}), ...(leavingBlank ? { elements: undefined, bg: undefined } : {}) } }));
     };
 
     const commitElement = (id, patch) => {
-        const o = snap().overrides;
+        const { overrides: o, elements } = snap();
+        // resizing a free-form element changes its own size (w/h/font), so it stays crisp; only x/y/rotation are kept as overrides
+        if (isElementId(id) && (patch.sx !== undefined || patch.sy !== undefined)) {
+            const { sx, sy, ...rest } = patch;
+            applyEdit({
+                elements: (elements || []).map((e) => (e.id === id ? foldTransform(e, sx, sy) : e)),
+                overrides: { ...o, [id]: { ...(o[id] || {}), ...rest } },
+            });
+            return;
+        }
         applyEdit({ overrides: { ...o, [id]: { ...(o[id] || {}), ...patch } } });
     };
     const deleteElement = (id) => {
-        const { overrides: o, extras } = snap();
-        if (id.startsWith('x_')) {
+        const { overrides: o, extras, elements } = snap();
+        if (isElementId(id)) {
+            const { [id]: _gone, ...rest } = o;
+            applyEdit({ elements: (elements || []).filter((e) => e.id !== id), overrides: rest });
+        } else if (id.startsWith('x_')) {
             const { [id]: _drop, ...rest } = o;
             applyEdit({ extras: extras.filter((e) => e.id !== id), overrides: rest });
         } else {
@@ -353,6 +426,16 @@ const PosterGenerator = () => {
         const next = { ...o };
         if (Object.keys(rest).length) next[id] = rest; else delete next[id];
         applyEdit({ overrides: next });
+    };
+    /** Hide/show/lock many pieces in ONE undo step (the Decorations list: "Hide all"). */
+    const setManyOverride = (ids, patch) => {
+        const o = { ...snap().overrides };
+        ids.forEach((id) => {
+            const next = { ...(o[id] || {}), ...patch };
+            Object.keys(next).forEach((k) => { if (next[k] === false || next[k] === undefined) delete next[k]; });
+            if (Object.keys(next).length) o[id] = next; else delete o[id];
+        });
+        applyEdit({ overrides: o });
     };
     const resetElement = (id) => {
         const { [id]: _drop, ...rest } = snap().overrides;
@@ -369,6 +452,98 @@ const PosterGenerator = () => {
         const rec = patch.text === undefined || now - lastTextEdit.current > 800; // coalesce typing into one undo step
         if (patch.text !== undefined) lastTextEdit.current = now;
         applyEdit({ extras: snap().extras.map((e) => (e.id === id ? { ...e, ...patch } : e)) }, rec);
+    };
+    // -- wording edited on the poster ---------------------------------------------------
+    const updateContent = (patch) => applyEditWithType({ content: { ...(snap().content || {}), ...patch } });
+    const resetContent = (id) => applyEdit({ content: withoutElement(id, snap().content) });
+    const applyEditWithType = (patch) => applyEdit(patch, typeRec()); // typing = one undo step per burst
+
+    // -- free-form elements (Design tab) ---------------------------------------------
+    const addElement = (el) => { applyEdit({ elements: [...(snap().elements || []), el] }); setSelectedId(el.id); };
+    const updateElement = (id, patch) => {
+        const rec = typeRec();
+        applyEdit({ elements: (snap().elements || []).map((e) => (e.id === id ? { ...e, ...patch } : e)) }, rec);
+    };
+    const styleFreeElement = (id, patch) => {
+        const rec = typeRec();
+        applyEdit({
+            elements: (snap().elements || []).map((e) => {
+                if (e.id !== id) return e;
+                const style = Object.fromEntries(Object.entries({ ...(e.style || {}), ...patch }).filter(([, v]) => v !== undefined && v !== ''));
+                return { ...e, style };
+            }),
+        }, rec);
+    };
+    const duplicateElement = (id) => {
+        const { list, copy } = duplicateIn(snap().elements || [], id);
+        if (!copy) return;
+        applyEdit({ elements: list });
+        setSelectedId(copy.id);
+    };
+    const reorderElement = (id, where) => applyEdit({ elements: reorderIn(snap().elements || [], id, where) });
+    const alignElement = (id, how) => {
+        const { overrides: o, elements } = snap();
+        const el = (elements || []).find((e) => e.id === id);
+        if (!el) return;
+        applyEdit({ overrides: { ...o, [id]: alignTo(el, o[id] || {}, how, 600, designH) } });
+    };
+    const setBackground = (bg) => updateCustom({ bg });
+    const addImageElement = async (file) => {
+        try {
+            const src = await fileToPhotoDataUrl(file, 1400);
+            const dims = await new Promise((resolve) => { const im = new window.Image(); im.onload = () => resolve([im.width, im.height]); im.onerror = () => resolve([0, 0]); im.src = src; });
+            addElement(makeImage(src, dims[0], dims[1]));
+        } catch (err) {
+            toast.error(err.message || 'Could not use that image');
+        }
+    };
+    // QR codes / speaker photos dropped on the poster: kept as sharp as the upload allows (a QR must stay scannable)
+    const readBlockImage = async (file) => {
+        const raw = await new Promise((resolve, reject) => { const r = new FileReader(); r.onerror = reject; r.onload = () => resolve(r.result); r.readAsDataURL(file); });
+        return raw.length > 1_500_000 ? fileToPhotoDataUrl(file, 1000) : raw;
+    };
+    const addBlockImage = async (block, file) => {
+        try {
+            const src = await readBlockImage(file);
+            addElement(makeBlock(block, { src, ...(block === 'qr1' ? { x: 470, y: designH - 150 } : { x: 240, y: 120 }) }));
+        } catch (err) { toast.error(err.message || 'Could not use that image'); }
+    };
+    const replaceBlockImage = async (id, file) => {
+        try { updateElement(id, { src: await readBlockImage(file) }); } catch (err) { toast.error(err.message || 'Could not use that image'); }
+    };
+    /** "+" layout: an empty canvas that keeps the current photo/palette and starts with a few event fields. */
+    const startBlank = () => {
+        past.current = []; future.current = [];
+        setSelectedId(null);
+        setPosterStyle((p) => ({
+            skeleton: 'blank', background: 'solid-gradient', frame: 'none', decoration: 'none',
+            paletteId: p?.paletteId || 'midnightSlate',
+            custom: { ...(p?.custom || {}), overrides: {}, elements: p?.custom?.elements?.length ? p.custom.elements : starterElements(designH) },
+        }));
+        setFormPref(null);
+    };
+
+    // -- typography (opt-in text styling) -----------------------------------------
+    const lastTypeEdit = useRef(0);
+    const clean = (o) => Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined && v !== ''));
+    const typeRec = () => { const now = Date.now(); const rec = now - lastTypeEdit.current > 800; lastTypeEdit.current = now; return rec; }; // slider drags = one undo step
+    /** role: 'title' | 'body' | 'accent' */
+    const updateTypography = (role, patch) => {
+        const cur = snap().typography || {};
+        const next = clean({ ...(cur[role] || {}), ...patch });
+        const typography = { ...cur, [role]: Object.keys(next).length ? next : undefined };
+        applyEdit({ typography: Object.values(typography).some(Boolean) ? typography : undefined }, typeRec());
+    };
+    const resetTypography = () => applyEdit({ typography: undefined, titleFont: undefined });
+    /** Style of one built-in element (stored in overrides[id].style next to its position). */
+    const styleElement = (id, patch) => {
+        const o = snap().overrides;
+        const style = clean({ ...(o[id]?.style || {}), ...patch });
+        const entry = { ...(o[id] || {}) };
+        if (Object.keys(style).length) entry.style = style; else delete entry.style;
+        const next = { ...o };
+        if (Object.keys(entry).length) next[id] = entry; else delete next[id];
+        applyEdit({ overrides: next }, typeRec());
     };
     const undo = () => {
         const prev = past.current.pop();
@@ -395,16 +570,17 @@ const PosterGenerator = () => {
         const palettes = pick.palettes.filter((id) => id !== posterStyle?.paletteId);
         const choices = palettes.length ? palettes : pick.palettes;
         const paletteId = posterStyle?.paletteId === 'auto' ? 'auto' : choices[Math.floor(Math.random() * choices.length)];
-        if (hasOverrides()) record();
-        setPosterStyle((p) => ({ ...pick, paletteId, custom: { ...(p?.custom || {}), overrides: {} } }));
+        const leavingBlank = posterStyle?.skeleton === 'blank';
+        if (hasOverrides() || leavingBlank) record();
+        setPosterStyle((p) => ({ ...pick, paletteId, custom: { ...(p?.custom || {}), overrides: {}, ...(leavingBlank ? { elements: undefined, bg: undefined } : {}) } }));
     };
 
-    const handleNewBackground = async () => {
+    const handleNewBackground = async (instruction) => {
         setIsBgBusy(true);
         try {
             const response = await fetchWithAuth(API_ENDPOINTS.POSTER.GENERATE, {
                 method: 'POST',
-                body: JSON.stringify({ templateType: selectedTemplate, formData })
+                body: JSON.stringify({ templateType: selectedTemplate, formData, layout: posterStyle?.skeleton, styleRefId: styleRefId || undefined, ...(typeof instruction === 'string' && instruction.trim() ? { instruction: instruction.trim().slice(0, 400) } : {}) })
             });
             const data = await response.json();
             if (!response.ok || !data.success) throw new Error(data.error || data.message || 'Could not generate a background');
@@ -427,11 +603,11 @@ const PosterGenerator = () => {
     };
 
     const handleSave = async (status = 'draft') => {
-        if (!isFormValid()) {
+        if (!isBlank && !isFormValid()) {
             toast.warning(`Please fill in required fields to save this ${status}.`);
             return;
         }
-        if (status === 'final' && !generatedImage) {
+        if (status === 'final' && !generatedImage && !isBlank) {
             toast.info("Please generate a poster first to finalise it.");
             return;
         }
@@ -469,7 +645,7 @@ const PosterGenerator = () => {
     };
 
     const handleDownload = async (format = 'png') => {
-        if (!generatedImage) {
+        if (!generatedImage && !isBlank) {
             toast.info("Please generate a poster first to download it.");
             return;
         }
@@ -548,17 +724,55 @@ const PosterGenerator = () => {
     };
 
     // ─────────────────────────────────────────────────────────────────────────
-    return (
-        <div className="tool-page">
-            <div className="tool-container">
+    // Focused workspace: [ form | customize | poster ]. Once a poster exists the form slides away
+    // (re-open it with "Edit form"), leaving the customize panel and the poster side by side.
+    const posterActions = (
+        <div className="pw-actions">
+            <button className="pw-btn" onClick={() => handleSave('draft')} disabled={isSaving} title="Save as a draft in History">
+                <FiFileText /> <span>{isSaving ? 'Saving…' : 'Save draft'}</span>
+            </button>
+            <button className="pw-btn" onClick={() => handleSave('final')} disabled={isSaving} title="Mark as final">
+                <FiCheckCircle /> <span>Finalise</span>
+            </button>
+            <div className="pw-menu" ref={dlRef}>
+                <button className="pw-btn primary" onClick={() => setDlOpen((o) => !o)} aria-haspopup="menu" aria-expanded={dlOpen}>
+                    <FiDownload /> <span>Download</span> <FiChevronDown />
+                </button>
+                {dlOpen && (
+                    <div className="pw-menu-pop" role="menu">
+                        {[['png', 'PNG', 'best quality'], ['jpg', 'JPG', 'smaller file'], ['pdf', 'PDF', 'for print']].map(([k, label, hint]) => (
+                            <button key={k} role="menuitem" onClick={() => { setDlOpen(false); handleDownload(k); }}>
+                                <b>{label}</b><small>{hint}</small>
+                            </button>
+                        ))}
+                    </div>
+                )}
+            </div>
+        </div>
+    );
 
-                {/* ── LEFT PANEL ── */}
-                <div className="tool-panel tool-panel-left">
-                    <div className="panel-inner">
-                        <header className="tool-header">
-                            <h2 className="tool-title">Poster Ideas</h2>
-                            <p className="tool-subtitle">Fill the required fields to generate a poster</p>
+    return (
+        <div className="tool-page pw-page">
+            <div className={`pw ${formOpen ? 'form-open' : 'form-closed'} ${hasPoster ? 'has-poster' : 'no-poster'}`}>
+
+                {/* ── FORM (slides away after generating) ── */}
+                <section className="pw-col pw-form" aria-label="Poster details" aria-hidden={!formOpen}>
+                    <div className="pw-col-scroll">
+                        <header className="tool-header pw-head">
+                            <div>
+                                <h2 className="tool-title">Poster Ideas</h2>
+                                <p className="tool-subtitle">Fill the required fields to generate a poster</p>
+                            </div>
+                            {hasPoster && (
+                                <button className="pw-icon-btn" onClick={() => setFormPref(false)} title="Hide form" aria-label="Hide form">‹</button>
+                            )}
                         </header>
+
+                        {lastSaved && !hasPoster && (
+                            <button className="pw-resume-btn" onClick={resumeLast} type="button">
+                                <span aria-hidden="true">↩</span> Resume your last poster
+                            </button>
+                        )}
 
                         <section className="tool-form-section">
                             <h3>Select Template</h3>
@@ -587,6 +801,17 @@ const PosterGenerator = () => {
                                 </div>
                             ))}
                         </section>
+
+                        {styleRefs.length > 0 && (
+                            <section className="tool-form-section">
+                                <h3>Style reference <small style={{ fontWeight: 400, opacity: 0.6 }}>(optional)</small></h3>
+                                <select value={styleRefId} onChange={(e) => setStyleRefId(e.target.value)} aria-label="Style reference">
+                                    <option value="">None: don't copy any reference</option>
+                                    {styleRefs.map((r) => <option key={r.id} value={r.id}>{r.title}{r.scope === 'global' ? ' (shared)' : ''}</option>)}
+                                </select>
+                                <p style={{ fontSize: '0.75rem', opacity: 0.65, margin: '0.4rem 0 0' }}>Your reference posters only influence a poster's background when you pick one here.</p>
+                            </section>
+                        )}
 
                         <section className="tool-actions">
                             <button
@@ -619,113 +844,115 @@ const PosterGenerator = () => {
                             </button>
                         </section>
 
+                        <button className="pw-blank-btn" onClick={startBlank} disabled={isGenerating} type="button">
+                            <span aria-hidden="true">＋</span> Start from a blank canvas
+                        </button>
+
                         <div className="tool-footer-history">
                             <RecentActivity filterType="Posters" limit={3} title="Recent Posters" />
                         </div>
                     </div>
-                </div>
+                </section>
 
-                {/* ── RIGHT PANEL ── */}
-                <div className="tool-panel tool-panel-right">
-                    <div className="panel-inner">
-                        <header className="tool-header space-between">
-                            <h2 className="tool-title">Design Preview</h2>
-                            {generatedImage && <span className="premium-badge">Ready to Export</span>}
-                        </header>
-
-                        <div className="tool-preview-container">
-
-                            {/* Loading state */}
-                            {isGenerating && (
-                                <div className="tool-preview-loading">
-                                    <div className="spinner"></div>
-                                    <p>{loadingStage || 'Generating your poster...'}</p>
-                                    <p className="loading-hint">This may take a moment</p>
-                                </div>
-                            )}
-
-                            {/* Error state */}
-                            {!isGenerating && error && (
-                                <div className="tool-preview-error">
-                                    <p>⚠️ {error}</p>
-                                </div>
-                            )}
-
-                            {/* ── Poster Preview ── */}
-                            {!isGenerating && generatedImage && posterStyle && (
-                                <>
-                                    <div style={{ display: 'flex', justifyContent: 'center', width: '100%', overflow: 'auto', borderRadius: '12px', paddingBottom: '10px' }}>
-                                        <div style={{ flexShrink: 0, width: `${previewWidth}px` }}>
-                                            <PosterStage
-                                                ref={stageRef}
-                                                recipe={posterStyle}
-                                                data={normalizeFormData(selectedTemplate, formData)}
-                                                aiBackgroundImage={generatedImage}
-                                                width={previewWidth}
-                                                editing={editing}
-                                                selectedId={selectedId}
-                                                onSelect={setSelectedId}
-                                                onCommit={commitElement}
-                                                onDelete={deleteElement}
-                                                onUndo={undo}
-                                                onRedo={redo}
-                                            />
-                                        </div>
-                                    </div>
-
-                                    <PosterCustomizer
-                                        template={selectedTemplate}
-                                        recipe={posterStyle}
-                                        custom={posterStyle.custom || {}}
-                                        onRecipe={updateRecipe}
-                                        onCustom={updateCustom}
-                                        data={normalizeFormData(selectedTemplate, formData)}
-                                        photo={generatedImage}
-                                        onShuffle={handleShuffle}
-                                        onNewBackground={handleNewBackground}
-                                        onUploadPhoto={handleUploadPhoto}
-                                        busy={isBgBusy}
-                                        onEditing={(on) => { setEditing(on); if (!on) setSelectedId(null); }}
-                                        selectedId={selectedId}
-                                        onSelect={setSelectedId}
-                                        onUndo={undo}
-                                        onRedo={redo}
-                                        canUndo={past.current.length > 0}
-                                        canRedo={future.current.length > 0}
-                                        onResetAll={resetLayoutEdits}
-                                        onAddText={addText}
-                                        onUpdateExtra={updateExtra}
-                                        onResetElement={resetElement}
-                                        onDeleteElement={deleteElement}
-                                        onRestore={restoreElement}
-                                    />
-
-                                    {/* Action buttons below poster */}
-                                    <div className="tool-actions" style={{ marginTop: '1rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                                        <button className="tool-btn-secondary" onClick={() => handleSave('draft')} disabled={isSaving}>
-                                            <FiFileText /> {isSaving ? 'Saving...' : 'Save Draft'}
-                                        </button>
-                                        <button className="tool-btn-primary" onClick={() => handleSave('final')} disabled={isSaving}>
-                                            <FiCheckCircle /> {isSaving ? 'Saving...' : 'Finalise'}
-                                        </button>
-                                        <button className="tool-btn-generate" onClick={() => handleDownload('png')}>
-                                            Download PNG
-                                        </button>
-                                        <button className="tool-btn-secondary" onClick={() => handleDownload('jpg')}>JPG</button>
-                                        <button className="tool-btn-secondary" onClick={() => handleDownload('pdf')}>PDF</button>
-                                    </div>
-                                </>
-                            )}
-
-                            {/* Empty state */}
-                            {!isGenerating && !generatedImage && !error && (
-                                <div className="tool-preview-empty">
-                                    <p>  Fill in the details and click Generate to create your poster.</p>
-                                </div>
-                            )}
+                {/* ── CUSTOMIZE (only once there is a poster) ── */}
+                {hasPoster && (
+                    <section className="pw-col pw-modify" aria-label="Customize poster">
+                        <div className="pw-col-scroll">
+                            <PosterCustomizer
+                                template={selectedTemplate}
+                                recipe={posterStyle}
+                                custom={posterStyle.custom || {}}
+                                onRecipe={updateRecipe}
+                                onCustom={updateCustom}
+                                data={posterData}
+                                photo={generatedImage}
+                                onShuffle={handleShuffle}
+                                onNewBackground={handleNewBackground}
+                                onUploadPhoto={handleUploadPhoto}
+                                busy={isBgBusy}
+                                onEditing={(on) => { setEditing(on); if (!on) setSelectedId(null); }}
+                                selectedId={selectedId}
+                                onSelect={setSelectedId}
+                                onUndo={undo}
+                                onRedo={redo}
+                                canUndo={past.current.length > 0}
+                                canRedo={future.current.length > 0}
+                                onResetAll={resetLayoutEdits}
+                                onAddText={addText}
+                                design={{
+                                    isBlank, add: addElement, update: updateElement, style: styleFreeElement, duplicate: duplicateElement,
+                                    reorder: reorderElement, align: alignElement, remove: deleteElement, setBg: setBackground,
+                                    removePhoto: () => setGeneratedImage(null), generateBg: handleNewBackground, addImage: addImageElement, addBlockImage, replaceBlockImage,
+                                    setElementOverride: commitElement, setManyOverride, startBlank, hasPhoto: !!generatedImage,
+                                }}
+                                onTypography={updateTypography}
+                                onContent={updateContent}
+                                onResetContent={resetContent}
+                                onResetTypography={resetTypography}
+                                onStyleElement={styleElement}
+                                onUpdateExtra={updateExtra}
+                                onResetElement={resetElement}
+                                onDeleteElement={deleteElement}
+                                onRestore={restoreElement}
+                            />
                         </div>
+                    </section>
+                )}
+
+                {/* ── POSTER ── */}
+                <main className="pw-col pw-stage" aria-label="Poster preview">
+                    <div className="pw-toolbar">
+                        {hasPoster ? (
+                            <button className={`pw-edit-form ${formOpen ? 'on' : ''}`} onClick={() => setFormPref(formOpen ? false : true)}>
+                                ✏️ {formOpen ? 'Hide form' : 'Edit form'}
+                            </button>
+                        ) : (
+                            <h2 className="tool-title">Design Preview</h2>
+                        )}
+                        {hasPoster && posterActions}
                     </div>
-                </div>
+
+                    <div className="pw-stage-body" ref={stageBodyRef}>
+                        {isGenerating && (
+                            <div className="tool-preview-loading">
+                                <div className="spinner"></div>
+                                <p>{loadingStage || 'Generating your poster...'}</p>
+                                <p className="loading-hint">This may take a moment</p>
+                            </div>
+                        )}
+
+                        {!isGenerating && error && (
+                            <div className="tool-preview-error">
+                                <p>⚠️ {error}</p>
+                            </div>
+                        )}
+
+                        {!isGenerating && hasPoster && (
+                            <div className="pw-poster" style={{ width: `${previewWidth}px` }}>
+                                <PosterStage
+                                    ref={stageRef}
+                                    recipe={posterStyle}
+                                    data={posterData}
+                                    aiBackgroundImage={generatedImage}
+                                    width={previewWidth}
+                                    editing={editing}
+                                    selectedId={selectedId}
+                                    onSelect={setSelectedId}
+                                    onCommit={commitElement}
+                                    onDelete={deleteElement}
+                                    onUndo={undo}
+                                    onRedo={redo}
+                                />
+                            </div>
+                        )}
+
+                        {!isGenerating && !hasPoster && !error && (
+                            <div className="tool-preview-empty">
+                                <p>Fill in the details and click Generate to create your poster.</p>
+                            </div>
+                        )}
+                    </div>
+                </main>
 
             </div>
         </div>

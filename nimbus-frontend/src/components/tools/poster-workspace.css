@@ -1,0 +1,79 @@
+/* Poster workspace: [ form | customize | poster ], each column scrolls on its own.
+   Once a poster exists the form slides away; "Edit form" brings it back. */
+.pw-page { padding-top: 72px; }
+.pw { --pw-form-w: clamp(340px, 24vw, 400px); --pw-mod-w: clamp(420px, 28vw, 500px); display: flex; height: calc(100vh - 72px); width: 100%; position: relative; background: var(--color-secondary); }
+
+.pw-col { min-width: 0; height: 100%; box-sizing: border-box; display: flex; flex-direction: column; }
+.pw-col-scroll { flex: 1; overflow-y: auto; overflow-x: hidden; padding: var(--spacing-xl, 24px); box-sizing: border-box; }
+
+/* form column: slides left and away */
+.pw-form { width: var(--pw-form-w); flex: 0 0 var(--pw-form-w); border-right: 1px solid var(--color-divider); background: var(--color-secondary);
+    overflow: hidden; transition: width 0.3s ease, flex-basis 0.3s ease, opacity 0.2s ease; }
+.pw-form .pw-col-scroll { width: var(--pw-form-w); }
+.pw.form-closed .pw-form { width: 0; flex-basis: 0; opacity: 0; border-right-width: 0; pointer-events: none; }
+
+/* customize column */
+.pw-modify { width: var(--pw-mod-w); flex: 0 0 var(--pw-mod-w); container-type: inline-size; border-right: 1px solid var(--color-divider); background: #f8fafc; }
+.pw-modify .pw-col-scroll { padding: 16px; }
+.pw-modify-title { margin: 0; font-size: 16px; font-weight: 700; color: var(--color-primary); }
+.pw-modify .pc-root { max-width: none; margin-top: 0; }
+.pw-modify .pc-grid { max-height: none; }
+.pw-modify .pc-tabs { position: sticky; top: -16px; z-index: 5; border-radius: 14px 14px 0 0; }
+/* one tidy row of tabs: compact, never wrapping; Shuffle shrinks to an icon unless the panel is roomy */
+.pw-modify .pc-tabs { overflow: hidden; flex-wrap: nowrap; gap: 0; padding: 6px 4px; }
+.pw-modify .pc-tab { padding: 7px 5px; font-size: 0.78rem; white-space: nowrap; flex: 0 1 auto; min-width: 0; }
+.pw-modify .pc-shuffle { margin-left: auto; padding: 7px 9px; flex: 0 0 auto; white-space: nowrap; }
+.pw-modify .pc-shuffle-label { display: none; }
+@container (min-width: 560px) {
+    .pw-modify .pc-tab { padding: 7px 9px; font-size: 0.85rem; }
+    .pw-modify .pc-shuffle-label { display: inline; }
+}
+
+.pw-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.pw-icon-btn { border: 1px solid var(--color-divider); background: #fff; width: 32px; height: 32px; border-radius: 8px; font-size: 20px; line-height: 1; cursor: pointer; color: var(--color-primary); flex-shrink: 0; }
+.pw-icon-btn:hover { border-color: #f97316; color: #ea580c; }
+
+/* poster column */
+.pw-stage { flex: 1; background: radial-gradient(circle at 50% 0%, #f1f5f9, #e2e8f0); }
+.pw-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 0 20px; height: 56px; flex: 0 0 56px; border-bottom: 1px solid var(--color-divider); background: var(--color-secondary); box-sizing: border-box; }
+.pw-actions { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+.pw-btn { display: inline-flex; align-items: center; gap: 7px; height: 36px; padding: 0 14px; border: 1px solid var(--color-divider); border-radius: 10px; background: #fff; color: var(--color-primary); font-size: 13px; font-weight: 600; white-space: nowrap; cursor: pointer; transition: border-color 0.15s, background 0.15s; }
+.pw-btn:hover:not(:disabled) { border-color: #f97316; background: #fff7ed; }
+.pw-btn:disabled { opacity: 0.6; cursor: wait; }
+.pw-btn.primary { background: #f97316; border-color: #f97316; color: #fff; }
+.pw-btn.primary:hover:not(:disabled) { background: #ea580c; border-color: #ea580c; }
+.pw-menu { position: relative; }
+.pw-menu-pop { position: absolute; right: 0; top: calc(100% + 6px); min-width: 170px; background: #fff; border: 1px solid var(--color-divider); border-radius: 10px; box-shadow: 0 12px 28px rgba(0, 0, 0, 0.16); padding: 4px; z-index: 30; display: flex; flex-direction: column; }
+.pw-menu-pop button { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; border: 0; background: none; padding: 9px 12px; border-radius: 7px; cursor: pointer; font-size: 14px; color: var(--color-primary); }
+.pw-menu-pop button:hover { background: #fff7ed; }
+.pw-menu-pop small { color: #9ca3af; font-size: 12px; }
+.pw-edit-form { border: 1px solid #fed7aa; background: #fff7ed; color: #c2410c; padding: 8px 14px; border-radius: 999px; font-size: 13px; font-weight: 700; cursor: pointer; }
+.pw-edit-form:hover, .pw-edit-form.on { background: #ffedd5; }
+.pw-stage-body { flex: 1; min-height: 0; overflow: auto; display: flex; align-items: center; justify-content: center; padding: 24px; box-sizing: border-box; }
+.pw-poster { flex-shrink: 0; box-shadow: 0 24px 60px rgba(15, 23, 42, 0.28); border-radius: 4px; overflow: hidden; line-height: 0; }
+.pw-stage-body .tool-preview-empty { text-align: center; color: var(--color-text-muted); max-width: 320px; }
+
+/* Laptops and smaller: the poster must keep room, so the form floats over the customize panel when both are wanted */
+@media (max-width: 1500px) {
+    .pw.has-poster .pw-form { position: absolute; z-index: 20; top: 0; left: 0; bottom: 0; box-shadow: 8px 0 30px rgba(0, 0, 0, 0.18); }
+    .pw.has-poster.form-closed .pw-form { box-shadow: none; }
+}
+@media (max-width: 1100px) {
+    .pw { --pw-form-w: min(380px, 92vw); --pw-mod-w: 360px; }
+}
+@media (max-width: 820px) {
+    .pw { flex-direction: column; height: auto; min-height: calc(100vh - 72px); }
+    .pw-col { height: auto; }
+    .pw-page { height: auto; overflow: auto; }
+    .pw-form, .pw-modify { width: 100%; flex-basis: auto; }
+    .pw-form .pw-col-scroll { width: 100%; }
+    .pw.has-poster .pw-form { position: static; box-shadow: none; }
+    .pw-stage-body { min-height: 60vh; }
+}
+
+.pw-blank-btn { width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; margin: 0 0 18px; padding: 11px 14px; border: 1.5px dashed #fdba74; border-radius: 10px; background: #fff7ed; color: #c2410c; font-size: 0.9rem; font-weight: 700; cursor: pointer; }
+.pw-blank-btn:hover:not(:disabled) { background: #ffedd5; border-color: #f97316; }
+.pw-blank-btn:disabled { opacity: 0.6; cursor: wait; }
+
+.pw-resume-btn { width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; margin: 0 0 10px; padding: 10px 14px; border: 1px solid var(--color-divider); border-radius: 10px; background: #fff; color: var(--color-primary); font-size: 0.88rem; font-weight: 600; cursor: pointer; }
+.pw-resume-btn:hover { border-color: #f97316; background: #fff7ed; }

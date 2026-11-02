@@ -2,7 +2,8 @@ import React, { forwardRef, useCallback, useEffect, useMemo, useRef, useState } 
 import { Stage, Layer, Group, Rect, Circle, Line, Transformer } from 'react-konva';
 import { DESIGN_W, DESIGN_H, setDesignHeight } from './engine/constants';
 import { contentPaletteFor, linear } from './engine/color';
-import { loadPosterFonts, familiesForPalette } from './engine/fonts';
+import { loadPosterFonts, familiesForPalette, areFontsReady } from './engine/fonts';
+import { fontsInUse, caseText, buildFontStyle } from './engine/typography';
 import { buildAutoPalette } from './engine/autoPalette';
 import { getPalette } from './data/palettes';
 import { getBackground } from './layers/backgrounds';
@@ -10,9 +11,11 @@ import { getDecoration } from './layers/decorations';
 import { getFrame } from './layers/frames';
 import { Grain } from './layers/primitives';
 import AIBackground from './layers/AIBackground';
-import { LAYOUTS } from './layouts';
+import { LAYOUTS, LAYOUT_FONTS } from './layouts';
 import { EditContext, Editable } from './engine/edit';
 import { Txt } from './layers/ui';
+import CustomElements from './editor/CustomElements';
+import { isElementId } from './editor/elements';
 
 /** Small outlined shapes that scatter deterministically per title. */
 const Motifs = ({ title, palette, decorationId }) => {
@@ -24,11 +27,15 @@ const Motifs = ({ title, palette, decorationId }) => {
         { x: 10 + (seed * 11) % 68, y: DESIGN_H - 34 - (14 + (seed * 2) % 18), type: 'circle' },
     ];
     return (
-        <Group opacity={0.48} listening={false}>
-            {spots.map((s, i) => (s.type === 'circle'
-                ? <Circle key={i} x={s.x + 17} y={s.y + 17} radius={17} stroke={palette.secondary} strokeWidth={2} opacity={0.8} />
-                : <Rect key={i} x={s.x + 17} y={s.y + 17} width={34} height={34} offsetX={17} offsetY={17} rotation={45} stroke={palette.secondary} strokeWidth={2} cornerRadius={4} opacity={0.8} />))}
-        </Group>
+        <>
+            {spots.map((s, i) => (
+                <Editable key={i} id={`d_motif${i + 1}`}>
+                    {s.type === 'circle'
+                        ? <Circle x={s.x + 17} y={s.y + 17} radius={17} stroke={palette.secondary} strokeWidth={2} opacity={0.55} listening={false} shadowColor={palette.secondary} shadowBlur={8} shadowOpacity={0.5} />
+                        : <Rect x={s.x + 17} y={s.y + 17} width={34} height={34} offsetX={17} offsetY={17} rotation={45} stroke={palette.secondary} strokeWidth={2} cornerRadius={4} opacity={0.55} listening={false} shadowColor={palette.secondary} shadowBlur={8} shadowOpacity={0.5} />}
+                </Editable>
+            ))}
+        </>
     );
 };
 
@@ -48,9 +55,10 @@ const ExtraTexts = ({ extras, palette }) => (
         {extras.map((e) => (
             <Editable key={e.id} id={e.id}>
                 <Txt
-                    text={e.text || 'Your text'} x={e.x ?? 60} y={e.y ?? 300} width={e.width ?? 480}
+                    text={e.case ? caseText(e.text || 'Your text', e.case) : (e.text || 'Your text')} x={e.x ?? 60} y={e.y ?? 300} width={e.width ?? 480}
                     align={e.align || 'center'} fontSize={e.size || 28} fontFamily={e.font || palette.titleFonts?.[0] || 'Montserrat'}
-                    fontStyle={e.weight || '700'} fill={e.color || palette.text} lineHeight={1.15} letterSpacing={e.letterSpacing || 0}
+                    fontStyle={buildFontStyle(e.weight || '700', { italic: e.italic })} fill={e.color || palette.text} lineHeight={e.lineHeight ?? 1.15} letterSpacing={e.letterSpacing || 0}
+                    opacity={e.opacity ?? 1}
                     shadowColor="rgba(0,0,0,0.5)" shadowBlur={e.shadow === false ? 0 : 8} shadowOpacity={0.6}
                 />
             </Editable>
@@ -70,19 +78,26 @@ const PosterStage = forwardRef(({ recipe, data, aiBackgroundImage, width = 600, 
         const base = recipe.paletteId === 'auto'
             ? buildAutoPalette(photo?.hues, { titleFonts: [custom.titleFont || 'Montserrat', 'Outfit'] })
             : getPalette(recipe.paletteId);
-        return custom.titleFont ? { ...base, titleFonts: [custom.titleFont, ...(base.titleFonts || [])] } : base;
-    }, [recipe.paletteId, photo, custom.titleFont]);
+        // Title/Body font choices (Text tab) are folded into the palette so layouts and measuring pick them up unchanged.
+        const tFont = custom.typography?.title?.font || custom.titleFont;
+        const bFont = custom.typography?.body?.font;
+        let out = tFont ? { ...base, titleFonts: [tFont, ...(base.titleFonts || [])] } : base;
+        if (bFont) out = { ...out, bodyFont: bFont };
+        // layouts that bring their own display fonts only use them when the user has not picked one
+        return { ...out, userTitleFont: tFont || undefined, userBodyFont: bFont || undefined };
+    }, [recipe.paletteId, photo, custom.titleFont, custom.typography?.title?.font, custom.typography?.body?.font]);
 
     const contentPalette = useMemo(
-        () => ({ ...contentPaletteFor(palette, typeof photo?.luma === 'number' ? photo.luma < 0.6 : undefined), textScale: custom.textScale || 1 }),
-        [palette, photo, custom.textScale]
+        () => ({ ...contentPaletteFor(palette, typeof photo?.luma === 'number' ? photo.luma < 0.6 : undefined), textScale: custom.textScale || 1, type: custom.typography }),
+        [palette, photo, custom.textScale, custom.typography]
     );
 
     const [fontsReady, setFontsReady] = useState(false);
-    const families = useMemo(() => familiesForPalette(palette), [palette]);
+    const usedFonts = fontsInUse(custom).join('|');
+    const families = useMemo(() => [...familiesForPalette(palette), ...(LAYOUT_FONTS[recipe.skeleton] || []), ...(usedFonts ? usedFonts.split('|') : [])], [palette, usedFonts, recipe.skeleton]);
     useEffect(() => {
         let alive = true;
-        setFontsReady(false);
+        if (!areFontsReady(families)) setFontsReady(false); // already-loaded fonts: don't blank the poster while re-rendering
         loadPosterFonts(families).then(() => alive && setFontsReady(true));
         return () => { alive = false; };
     }, [families]);
@@ -94,21 +109,23 @@ const PosterStage = forwardRef(({ recipe, data, aiBackgroundImage, width = 600, 
     // -- direct editing ------------------------------------------------------
     const overrides = custom.overrides || EMPTY_OVERRIDES;
     const extras = custom.extras || EMPTY_EXTRAS;
+    const elements = custom.elements || EMPTY_EXTRAS;
+    const selEl = elements.find((e) => e.id === selectedId);
     const nodes = useRef({});
     const trRef = useRef(null);
     const [guides, setGuides] = useState({});
     const register = useCallback((id, node) => { if (node) nodes.current[id] = node; else delete nodes.current[id]; }, []);
     const editCtx = useMemo(() => ({
-        editing, overrides, selectedId, designW: DESIGN_W, designH,
+        editing, overrides, selectedId, designW: DESIGN_W, designH, typography: custom.typography,
         select: (id) => onSelect && onSelect(id),
         commit: (id, patch) => onCommit && onCommit(id, patch),
         register, setGuides,
-    }), [editing, overrides, selectedId, designH, onSelect, onCommit, register]);
+    }), [editing, overrides, selectedId, designH, custom.typography, onSelect, onCommit, register]);
 
     useEffect(() => {
         const tr = trRef.current;
         if (!tr) return undefined;
-        const node = editing && selectedId ? nodes.current[selectedId] : null;
+        const node = editing && selectedId && !overrides[selectedId]?.locked ? nodes.current[selectedId] : null;
         tr.nodes(node ? [node] : []);
 
         // Layouts mark their root groups listening={false} (cheaper when just viewing). While editing, the
@@ -156,7 +173,14 @@ const PosterStage = forwardRef(({ recipe, data, aiBackgroundImage, width = 600, 
             onMouseDown={(e) => { if (editing && (e.target === e.target.getStage() || e.target.getParent()?.nodeType === 'Layer')) onSelect?.(null); }}>
             <Layer scaleX={k} scaleY={k} listening={editing} clip={{ x: 0, y: 0, width: DESIGN_W, height: designH }}>
                 <Rect width={DESIGN_W} height={designH} fill={palette.bg} />
-                <Background palette={palette} />
+                {recipe.background && recipe.background !== 'solid-gradient'
+                    ? <Editable id="d_pattern" pick={false}><Group listening={false}><Background palette={palette} /></Group></Editable>
+                    : <Background palette={palette} />}
+                {custom.bg && (
+                    <Rect width={DESIGN_W} height={designH} {...(custom.bg.c2
+                        ? linear(0, 0, DESIGN_W * 0.35, designH, [[0, custom.bg.c1], [1, custom.bg.c2]])
+                        : { fill: custom.bg.c1 })} />
+                )}
                 <AIBackground src={aiBackgroundImage} palette={palette} strength={strength} onReady={(info) => setPhoto(info)} />
                 <Decoration palette={palette} />
                 <Grain opacity={0.08} />
@@ -168,6 +192,7 @@ const PosterStage = forwardRef(({ recipe, data, aiBackgroundImage, width = 600, 
                 <Motifs title={data.title} palette={contentPalette} decorationId={recipe.decoration} />
                 {fontsReady && photo !== undefined && <Layout data={data} palette={contentPalette} />}
                 {fontsReady && photo !== undefined && <ExtraTexts extras={extras} palette={contentPalette} />}
+                {fontsReady && photo !== undefined && elements.length > 0 && <CustomElements elements={elements} data={data} palette={contentPalette} editing={editing} />}
                 <Frame palette={contentPalette} />
                 {editing && (
                     <Group name="editor-ui" listening={false}>
@@ -177,10 +202,14 @@ const PosterStage = forwardRef(({ recipe, data, aiBackgroundImage, width = 600, 
                 )}
                 {editing && (
                     <Transformer
-                        ref={trRef} name="editor-ui" rotateEnabled={false} keepRatio flipEnabled={false}
-                        enabledAnchors={['top-left', 'top-right', 'bottom-left', 'bottom-right']}
+                        ref={trRef} name="editor-ui" shouldOverdrawWholeArea rotateEnabled={isElementId(selectedId)} keepRatio={!(selEl && (selEl.type === 'image' || (selEl.type === 'shape' && selEl.kind !== 'line') || selEl.type === 'block'))} flipEnabled={false}
+                        enabledAnchors={selEl && selEl.type === 'shape' && selEl.kind === 'line'
+                            ? ['middle-left', 'middle-right']
+                            : selEl && (selEl.type === 'image' || selEl.type === 'shape')
+                                ? ['top-left', 'top-right', 'bottom-left', 'bottom-right', 'middle-left', 'middle-right', 'top-center', 'bottom-center']
+                                : ['top-left', 'top-right', 'bottom-left', 'bottom-right']}
                         anchorSize={9 / k} anchorCornerRadius={2} borderStroke="#f97316" anchorStroke="#f97316" anchorFill="#ffffff" borderStrokeWidth={1 / k}
-                        boundBoxFunc={(o, n) => (n.width < 12 || n.height < 8 ? o : n)}
+                        boundBoxFunc={(o, n) => (n.width < 12 || (n.height < 8 && !(selEl && selEl.kind === 'line')) ? o : n)}
                     />
                 )}
             </Layer>

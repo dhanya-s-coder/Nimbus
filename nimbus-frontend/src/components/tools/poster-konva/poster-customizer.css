@@ -1,4 +1,4 @@
-.pc-root { width: 100%; max-width: 600px; margin-top: 1rem; border: 1px solid #e5e7eb; border-radius: 14px; background: #fff; overflow: hidden; }
+.pc-root { width: 100%; max-width: 600px; margin-top: 1rem; border: 1px solid #e5e7eb; border-radius: 14px; background: #fff; }
 .pc-tabs { display: flex; align-items: center; gap: 2px; padding: 6px 8px; border-bottom: 1px solid #eef0f3; background: #fafafa; flex-wrap: wrap; }
 .pc-tab { border: 0; background: transparent; padding: 8px 14px; border-radius: 8px; font-size: 0.85rem; font-weight: 600; color: #4b5563; cursor: pointer; }
 .pc-tab:hover { background: #f1f5f9; }
