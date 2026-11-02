@@ -1,4 +1,4 @@
-// Bulk-load shared knowledge from files in nimbus-backend/knowledge/ into Supabase.
+// Bulk-load shared knowledge from files in nimbus-backend/knowledge/ into MongoDB.
 //
 //   npm run seed:knowledge                 load / update everything (shared with all users)
 //   npm run seed:knowledge -- --dry-run    show what would happen, touches nothing
@@ -51,25 +51,23 @@ if (dryRun) {
     process.exit(0);
 }
 
-const { getSupabase } = await import('../src/config/supabase.js');
-const { ingestText } = await import('../src/services/rag/ingest.service.js');
-const sb = getSupabase();
+const mongoose = (await import('mongoose')).default;
+await mongoose.connect(process.env.MONGO_URI);
+const { ingestText, deleteSource } = await import('../src/services/rag/ingest.service.js');
+const { KnowledgeSource } = await import('../src/models/Knowledge.js');
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const owner = scope === 'global' ? null : userId;
 
 // what is already stored from files (matched by relative path)
-let existingQ = sb.from('knowledge_sources').select('id,content_hash,metadata').eq('scope', scope);
-existingQ = owner === null ? existingQ.is('owner_id', null) : existingQ.eq('owner_id', owner);
-const { data: existing, error } = await existingQ;
-if (error) { console.error('Could not read Supabase:', error.message); process.exit(1); }
-const byFile = new Map(existing.filter((s) => s.metadata?.file).map((s) => [s.metadata.file, s]));
+const existing = await KnowledgeSource.find({ scope, ownerId: owner }).select('contentHash metadata').lean();
+const byFile = new Map(existing.filter((s) => s.metadata?.file).map((s) => [s.metadata.file, { id: s._id, content_hash: s.contentHash }]));
 
 let added = 0, updated = 0, same = 0, failed = 0;
 for (const d of parsed) {
     const prev = byFile.get(d.rel);
     if (prev && prev.content_hash === d.hash) { same += 1; console.log(`same  ${d.rel}`); continue; }
     try {
-        if (prev) await sb.from('knowledge_sources').delete().eq('id', prev.id); // replace the old version (chunks cascade)
+        if (prev) await deleteSource({ ownerId: owner, id: String(prev.id), isAdmin: true }); // replace the old version (its chunks go with it)
         const r = await ingestText({ ownerId: owner, scope, type: d.type, title: d.title, text: d.text, metadata: { file: d.rel, tags: d.tags } });
         if (prev) updated += 1; else added += 1;
         console.log(`${prev ? 'upd ' : 'new '}  ${d.rel}  ->  "${d.title}" [${d.type}] ${r.chunks} chunk(s)`);
@@ -83,7 +81,7 @@ for (const d of parsed) {
 let pruned = 0;
 if (prune) {
     const keep = new Set(parsed.map((d) => d.rel));
-    for (const [file, s] of byFile) if (!keep.has(file)) { await sb.from('knowledge_sources').delete().eq('id', s.id); pruned += 1; console.log(`gone  ${file} (removed from the database)`); }
+    for (const [file, s] of byFile) if (!keep.has(file)) { await deleteSource({ ownerId: owner, id: String(s.id), isAdmin: true }); pruned += 1; console.log(`gone  ${file} (removed from the database)`); }
 }
 console.log(`\nDone: ${added} new, ${updated} updated, ${same} unchanged, ${failed} failed${prune ? `, ${pruned} pruned` : ''}.`);
 process.exit(failed ? 1 : 0);

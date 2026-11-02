@@ -18,7 +18,6 @@
         "@anthropic-ai/sdk": "^0.131.0",
         "@google/generative-ai": "^0.24.1",
         "@huggingface/inference": "^4.13.5",
-        "@supabase/supabase-js": "^2.117.2",
         "bcryptjs": "^3.0.3",
         "cloudinary": "^2.8.0",
         "cors": "^2.8.5",

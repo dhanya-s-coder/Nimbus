@@ -1,4 +1,4 @@
-import { getSupabase, isSupabaseConfigured } from '../../config/supabase.js';
+import { GenerationRun, dbReady } from '../../models/Knowledge.js';
 import { TextFactory } from '../ai/text/text.factory.js';
 import { searchKnowledge } from './retrieval.service.js';
 
@@ -20,10 +20,13 @@ const formatContext = (chunks) => {
 };
 
 const persistRun = async (row) => {
-    if (!isSupabaseConfigured()) return null;
+    if (!dbReady()) return null;
     try {
-        const { data } = await getSupabase().from('generation_runs').insert(row).select('id').single();
-        return data?.id || null;
+        const doc = await GenerationRun.create({
+            userId: row.user_id, kind: row.kind, input: row.input, retrievedChunkIds: row.retrieved_chunk_ids,
+            output: row.output, provider: row.provider, latencyMs: row.latency_ms, status: row.status, error: row.error,
+        });
+        return String(doc._id);
     } catch (err) {
         console.warn('generation_runs insert failed:', err.message);
         return null;

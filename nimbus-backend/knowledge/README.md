@@ -38,5 +38,5 @@ Without a header, the title is the first `# Heading` (or the file name) and the 
 Passwords, API keys, private phone numbers or personal emails. This folder is committed to git.
 
 ## Where it ends up
-Supabase tables `knowledge_sources` (one row per file) and `knowledge_chunks` (searchable pieces with their embeddings).
+MongoDB collections `knowledgesources` (one document per file) and `knowledgechunks` (searchable pieces with their embeddings).
 The files themselves stay in this folder; the database holds the text and its search index.

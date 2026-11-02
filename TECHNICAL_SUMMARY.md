@@ -1,12 +1,12 @@
 # Technical Summary: Nimbus Project
 
 ## Architecture Overview
-Nimbus is a MERN application (MongoDB, Express, React, Node.js) with a Supabase (Postgres + pgvector) knowledge store for retrieval-augmented generation.
+Nimbus is a MERN application (MongoDB, Express, React, Node.js) with a knowledge store (embeddings kept in the same MongoDB) for retrieval-augmented generation.
 
 ### Key Design Decisions
 - **Canvas posters (react-konva)**: Posters are rendered on a Konva stage authored in a 600-wide design space and exported from the very same stage (PNG / JPG / PDF), replacing the earlier DOM + html2canvas pipeline. Layouts are small functions (`poster-konva/layouts`), skins are Konva primitives (`layers/`), and every movable element is an `Editable` so users can drag, resize, hide and add text. Customisations (`custom.overrides`, `custom.extras`, size, font, palette) are saved with the poster.
 - **Provider adapters**: `services/ai/text` and `services/ai/image` hide the vendor behind factories. The active provider comes from env (`ACTIVE_TEXT_PROVIDER`, `ACTIVE_IMAGE_PROVIDER`); a request may override it only if the provider is allow-listed; failures can fail over to `*_FALLBACK_PROVIDERS`.
-- **Grounded generation (RAG)**: Knowledge is chunked, embedded with Gemini (768-d) and stored in Supabase. Retrieval is hybrid (vector + full-text, reciprocal-rank fusion) followed by a cosine-similarity gate so irrelevant notes are never used. The orchestrator fences retrieved text as data, validates structured output (zod), and logs each run in `generation_runs`.
+- **Grounded generation (RAG)**: Knowledge is chunked, embedded with Gemini (768-d) and stored in MongoDB. Retrieval is hybrid (vector + keyword, reciprocal-rank fusion, ranked in memory) followed by a cosine-similarity gate so irrelevant notes are never used. The orchestrator fences retrieved text as data, validates structured output (zod), and logs each run in the `generationruns` collection.
 - **LaTeX reports**: the model returns structured report data (title, meta, sections, tables, action items) validated with zod; our own templates (`services/latex/template.js`) turn it into LaTeX, so every report compiles and looks consistent. `POST /api/report/generate-latex` creates the source, `POST /api/report/compile` runs it through Tectonic (sandboxed, time-limited, allow-listed packages, no file/shell access) and returns the PDF. The page shows the PDF preview and an editable source with auto-recompile.
 - **Cloudinary for images**: AI backgrounds, uploaded photos and poster previews are hosted on Cloudinary, keeping MongoDB light.
 - **Smart form-to-AI logic**: Users fill simple forms; prompts are assembled server-side. Poster autofill only fills empty fields and only takes facts from the user's input or the knowledge base.
@@ -16,7 +16,7 @@ Nimbus is a MERN application (MongoDB, Express, React, Node.js) with a Supabase 
 ## Full Tech Stack
 - **Frontend**: React 19 (CRA), react-konva / Konva, jsPDF, self-hosted fonts (@fontsource)
 - **Backend**: Node.js (ESM), Express, Mongoose, JWT, helmet, express-rate-limit, zod
-- **Databases**: MongoDB (users, auth, activity history); Supabase Postgres + pgvector (knowledge base, generation runs)
+- **Database**: MongoDB only (users, auth, activity history, knowledge base, generation runs). Images live in Cloudinary object storage.
 - **AI**: Google Gemini (text, embeddings, optional image), Anthropic Claude (optional text), Hugging Face SDXL / Pollinations / Imagen / Replicate (images)
 - **Media Storage**: Cloudinary
 - **Email**: Nodemailer (SMTP)
@@ -26,7 +26,7 @@ Nimbus is a MERN application (MongoDB, Express, React, Node.js) with a Supabase 
 - `services/ai/`: text + image provider adapters, retries, failover
 - `services/rag/`: chunker, embeddings, ingest, retrieval, orchestrator
 - `services/*.service.js`: poster, logo, report, email, poster-content generation
-- `supabase/migrations/001_rag.sql`: RAG schema (run once in the Supabase SQL editor)
+- `src/models/Knowledge.js`: knowledge base schemas (KnowledgeSource, KnowledgeChunk, GenerationRun)
 
 ### Frontend layout (`nimbus-frontend/src/component s/tools`)
 - `PosterGenerator.jsx`: form, generation, save, export

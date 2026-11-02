@@ -138,7 +138,7 @@ Legacy notes for the older text version:
 
 ### AI & Services
 - **Provider layer** (`nimbus-backend/src/services/ai`): text via Google Gemini or Anthropic Claude; images via Hugging Face SDXL, Pollinations, Gemini image, Imagen or Replicate. Pick the active provider in `.env`; optional automatic failover.
-- **RAG**: Supabase Postgres + pgvector, Gemini embeddings (768-d), hybrid vector + full-text search with a relevance gate.
+- **RAG**: stored in the same MongoDB as everything else; Gemini embeddings (768-d), hybrid vector + keyword ranking with a relevance gate.
 - **Poster rendering**: react-konva / Konva on the client, jsPDF for PDF export.
 - **Cloudinary**: Media hosting for generated posters, previews and logos.
 - **Nodemailer**: SMTP-based email delivery.
@@ -162,8 +162,8 @@ Legacy notes for the older text version:
     ```bash
     npm install
     ```
-3.  Copy `.env.example` to `.env` and fill it in (Mongo, JWT secrets, SMTP, Cloudinary, `GEMINI_API_KEY`, an image provider key such as `HF_API_KEY` or `POLLINATIONS_API_KEY`, and optionally `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY`). Every setting is documented in the file.
-3b. **Knowledge Base (optional)**: create a Supabase project, then run `nimbus-backend/supabase/migrations/001_rag.sql` once in the Supabase SQL Editor. Without Supabase the app works normally, just without retrieval.
+3.  Copy `.env.example` to `.env` and fill it in (Mongo, JWT secrets, SMTP, Cloudinary, `GEMINI_API_KEY`, an image provider key such as `HF_API_KEY` or `POLLINATIONS_API_KEY`). Every setting is documented in the file.
+3b. **Knowledge Base**: nothing extra to set up. It lives in the same MongoDB (collections `knowledgesources`, `knowledgechunks`, `generationruns`) and needs only `MONGO_URI` and `GEMINI_API_KEY` (for embeddings). Load shared files with `npm run seed:knowledge`.
 4.  **LaTeX reports (Tectonic)**: install the [Tectonic](https://tectonic-typesetting.github.io/) engine, then warm its cache once:
     - Windows: download `tectonic-*-x86_64-pc-windows-msvc.zip` from the [releases page](https://github.com/tectonic-typesetting/tectonic/releases), unzip `tectonic.exe` into `nimbus-backend/tools/tectonic/` (or put it on your PATH / set `TECTONIC_PATH`).
     - macOS / Linux: `brew install tectonic` or the install script on the Tectonic site.
