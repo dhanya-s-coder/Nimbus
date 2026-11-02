@@ -1,13 +1,17 @@
 import { savePosterDraft, getActivityByUserAndType, deleteActivity } from "../services/history.service.js";
 import { uploadBufferToCloudinary } from "../utils/cloudinaryHelper.js";
 import { generatePosterBackground } from "../services/poster.service.js";
+import { isKnownLayout } from "../services/layoutComposition.js";
+import { isStyleRefId } from "../services/rag/styleReference.service.js";
 
 export const generatePosterController = async (req, res) => {
     try {
-        const { eventName, category, theme, formData, templateType, imageProvider, textProvider, instruction, useBrandStyle } = req.body;
+        const { eventName, category, theme, formData, templateType, imageProvider, textProvider, instruction, useBrandStyle, layout, styleRefId } = req.body;
         const { url, mimeType, provider, art } = await generatePosterBackground({
             userId: req.user?.userId, eventName, category, theme, formData, templateType, imageProvider, textProvider,
-            instruction: typeof instruction === 'string' ? instruction.slice(0, 400) : '', useBrandStyle
+            instruction: typeof instruction === 'string' ? instruction.slice(0, 400) : '', useBrandStyle,
+            layout: isKnownLayout(layout) ? layout : undefined,
+            styleRefId: isStyleRefId(styleRefId) ? styleRefId : undefined
         });
 
         res.json({
@@ -51,12 +55,25 @@ export const savePosterController = async (req, res) => {
             const pm = previewImage.match(/^data:[^;]+;base64,(.*)$/);
             if (pm) previewUrl = await uploadBufferToCloudinary(Buffer.from(pm[1], 'base64'), 'nimbus/poster-previews');
         }
+        // free-form canvas: images the user dropped on the poster are hosted too, instead of bloating the document with data URLs
+        let storedStyle = posterStyle || null;
+        const els = storedStyle?.custom?.elements;
+        if (Array.isArray(els)) {
+            if (els.length > 150) return res.status(400).json({ success: false, message: "Too many elements on this poster" });
+            storedStyle = JSON.parse(JSON.stringify(storedStyle));
+            for (const el of storedStyle.custom.elements) {
+                if ((el?.type === 'image' || el?.type === 'block') && typeof el.src === 'string' && el.src.startsWith('data:')) {
+                    const em = el.src.match(/^data:[^;]+;base64,(.*)$/);
+                    if (em) el.src = await uploadBufferToCloudinary(Buffer.from(em[1], 'base64'), 'nimbus/poster-assets');
+                }
+            }
+        }
         const draft = await savePosterDraft(userId, {
             templateType,
             formData: storedFormData,
             generatedImageUrl: finalImageUrl,
             previewUrl,
-            posterStyle: posterStyle || null,
+            posterStyle: storedStyle,
             status: status || 'draft'
         });
 

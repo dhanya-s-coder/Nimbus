@@ -1,8 +1,10 @@
 import { ImageFactory } from './ai/image/image.factory.js';
 import { uploadBufferToCloudinary } from '../utils/cloudinaryHelper.js';
-import { planArtDirection, BACKGROUND_RULES } from './artDirector.service.js';
+import { planArtDirection, BACKGROUND_RULES, STRICT_RULES } from './artDirector.service.js';
+import { compositionFor } from './layoutComposition.js';
 
-export const buildBackgroundPrompt = (eventName = "", category = "", theme = "", colorPreference = "") => {
+export const buildBackgroundPrompt = (eventName = "", category = "", theme = "", colorPreference = "", layout = "") => {
+    const composition = compositionFor(layout);
     const n = (eventName + " " + category + " " + theme).toLowerCase();
 
     let stylePrompt = "";
@@ -55,9 +57,12 @@ export const buildBackgroundPrompt = (eventName = "", category = "", theme = "",
     subtle geometric patterns, sophisticated, 4k`;
 
     const colorHint = colorPreference ? `, consistent ${colorPreference} color palette` : '';
+    const space = composition
+        ? `composition for the poster layout: ${composition},`
+        : 'empty clean composition with space for text overlay,';
     return `${stylePrompt}${colorHint}, 
     poster background template only, 
-    empty clean composition with space for text overlay,
+    ${space}
     NO text, NO letters, NO words, NO typography, NO watermarks,
     NO people, NO faces, NO hands, NO logos,
     vertical portrait orientation, 4:5 aspect ratio`;
@@ -74,8 +79,9 @@ underexposed, bad composition, cluttered, messy`;
  * upload it to Cloudinary and return the hosted URL.
  */
 export const generatePosterBackground = async ({
-    userId, eventName, category, theme, formData, templateType, imageProvider, textProvider, instruction, useBrandStyle = true,
+    userId, eventName, category, theme, formData, templateType, imageProvider, textProvider, instruction, useBrandStyle = true, layout, styleRefId,
 }) => {
+    const composition = compositionFor(layout);
     const finalEventName = eventName || formData?.eventName || '';
     const finalCategory = category || formData?.eventType || formData?.category || templateType || '';
     const finalTheme = theme || formData?.theme || '';
@@ -86,17 +92,20 @@ export const generatePosterBackground = async ({
     if (useBrandStyle !== false) {
         try {
             art = await Promise.race([
-                planArtDirection({ userId, templateType, formData, instruction, textProvider }),
+                planArtDirection({ userId, templateType, formData, instruction, textProvider, layout, styleRefId }),
                 new Promise((_, rej) => setTimeout(() => rej(new Error('art director timed out')), 20000)),
             ]);
-            prompt = `${art.imagePrompt}, ${BACKGROUND_RULES}`;
+            // with a known layout the composition (below) replaces the generic "calm space for text" rule
+            prompt = composition
+                ? `${art.imagePrompt}, composition for the poster layout: ${composition}, ${STRICT_RULES}`
+                : `${art.imagePrompt}, ${BACKGROUND_RULES}`;
         } catch (err) {
             console.warn(`Art director unavailable (${err.message}); using keyword prompt`);
             art = null;
         }
     }
     if (!prompt) {
-        const base = buildBackgroundPrompt(finalEventName, finalCategory, finalTheme, formData?.colorPreference);
+        const base = buildBackgroundPrompt(finalEventName, finalCategory, finalTheme, formData?.colorPreference, layout);
         prompt = instruction ? `${instruction}, ${base}` : base;
     }
 

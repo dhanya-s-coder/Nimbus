@@ -159,7 +159,7 @@ const KnowledgeBase = () => {
                             <button className="tool-btn-secondary" style={{ width: '100%', marginTop: 8, justifyContent: 'center' }} onClick={() => fileRef.current?.click()} disabled={saving}>
                                 📄 Upload files (PDF / DOCX / TXT, several at once)
                             </button>
-                            <button className="tool-btn-secondary" style={{ width: '100%', marginTop: 8, justifyContent: 'center' }} onClick={() => posterRef.current?.click()} disabled={saving} title="Nimbus studies the design (layout, colours, type) and uses it only as inspiration">
+                            <button className="tool-btn-secondary" style={{ width: '100%', marginTop: 8, justifyContent: 'center' }} onClick={() => posterRef.current?.click()} disabled={saving} title="Nimbus studies the design (layout, colours, type). It is used only when you pick it for a poster, never automatically">
                                 🖼 Add a reference poster (style only)
                             </button>
                             <input ref={posterRef} type="file" hidden accept="image/*"
@@ -187,7 +187,7 @@ const KnowledgeBase = () => {
                                     <div style={{ flex: 1, minWidth: 0 }}>
                                         <div style={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.title}</div>
                                         <div style={{ fontSize: '0.75rem', opacity: 0.65 }}>
-                                            {s.type === 'poster_style' ? 'Style reference' : (TYPES.find((t) => t.id === s.type)?.label || s.type)}{s.scope === 'global' ? ' · shared' : ''}
+                                            {s.type === 'poster_style' ? 'Style reference · used only when you pick it' : (TYPES.find((t) => t.id === s.type)?.label || s.type)}{s.scope === 'global' ? ' · shared' : ''}
                                         </div>
                                     </div>
                                     {s.scope !== 'global' && (
