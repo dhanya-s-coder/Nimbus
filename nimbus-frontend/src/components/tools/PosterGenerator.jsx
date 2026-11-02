@@ -287,7 +287,10 @@ const PosterGenerator = () => {
             const design = getDesignByIndex(selectedTemplate, selectedIndex, {
                 colorPreference: formData.colorPreference,
             });
-            setPosterStyle(keepCustom ? { ...design, custom: keepCustom } : design);
+            // Default to the colours of the AI-generated background so text/panels always match the photo
+            // (the curated palettes stay available in the Customize panel).
+            const styled = { ...design, paletteId: 'auto' };
+            setPosterStyle(keepCustom ? { ...styled, custom: keepCustom } : styled);
 
             toast.success(data.message || "Poster generated successfully!");
         } catch (err) {
@@ -391,7 +394,7 @@ const PosterGenerator = () => {
         const pick = pool[Math.floor(Math.random() * pool.length)];
         const palettes = pick.palettes.filter((id) => id !== posterStyle?.paletteId);
         const choices = palettes.length ? palettes : pick.palettes;
-        const paletteId = choices[Math.floor(Math.random() * choices.length)];
+        const paletteId = posterStyle?.paletteId === 'auto' ? 'auto' : choices[Math.floor(Math.random() * choices.length)];
         if (hasOverrides()) record();
         setPosterStyle((p) => ({ ...pick, paletteId, custom: { ...(p?.custom || {}), overrides: {} } }));
     };
