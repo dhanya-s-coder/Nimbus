@@ -7,6 +7,16 @@ export const alpha = (color, a) => {
     return color;
 };
 
+/** Relative luminance (0..1) of a #rrggbb colour; unknown formats count as dark. */
+export const luminance = (color) => {
+    if (!/^#[0-9a-f]{6}/i.test(color || '')) return 0;
+    const [r, g, b] = [1, 3, 5].map((i) => parseInt(color.slice(i, i + 2), 16) / 255);
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+};
+export const isLight = (color) => luminance(color) > 0.6;
+/** Readable text colour on top of a solid background. */
+export const inkOn = (bg, dark = '#111827', light = '#ffffff') => (isLight(bg) ? dark : light);
+
 /** Same colour, fully transparent (avoids dark fringes when fading to "transparent"). */
 export const clear = (color) => {
     if (typeof color === 'string' && /^#[0-9a-f]{6}/i.test(color)) return color.slice(0, 7) + '00';

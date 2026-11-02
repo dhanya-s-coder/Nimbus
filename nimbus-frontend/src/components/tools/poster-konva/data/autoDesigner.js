@@ -42,6 +42,27 @@ const DESIGN_POOLS = {
             decoration: 'geometric-shapes',
             palettes: ['oceanTeal', 'emeraldAcademic'],
         },
+        {
+            skeleton: 'arch-window',
+            background: 'solid-gradient',
+            frame: 'none',
+            decoration: 'none',
+            palettes: ['creamFormal', 'sageMint', 'roseGold'],
+        },
+        {
+            skeleton: 'magazine-cover',
+            background: 'solid-gradient',
+            frame: 'none',
+            decoration: 'none',
+            palettes: ['midnightSlate', 'universityBlue', 'charcoalPro'],
+        },
+        {
+            skeleton: 'circle-badge',
+            background: 'solid-gradient',
+            frame: 'none',
+            decoration: 'none',
+            palettes: ['goldFormal', 'universityBlue', 'emeraldAcademic'],
+        },
     ],
 
     recruitment: [
@@ -84,6 +105,27 @@ const DESIGN_POOLS = {
             frame: 'double-line',
             decoration: 'corner-accents',
             palettes: ['crimsonBold', 'sunsetOrange', 'charcoalPro'],
+        },
+        {
+            skeleton: 'circle-badge',
+            background: 'solid-gradient',
+            frame: 'none',
+            decoration: 'none',
+            palettes: ['emeraldAcademic', 'royalPurple', 'goldFormal'],
+        },
+        {
+            skeleton: 'big-type',
+            background: 'solid-gradient',
+            frame: 'none',
+            decoration: 'none',
+            palettes: ['charcoalPro', 'crimsonBold', 'electricIndigo'],
+        },
+        {
+            skeleton: 'diagonal-split',
+            background: 'solid-gradient',
+            frame: 'none',
+            decoration: 'none',
+            palettes: ['electricIndigo', 'oceanTeal', 'sunsetOrange'],
         },
     ],
 
@@ -143,6 +185,34 @@ const DESIGN_POOLS = {
             decoration: 'glow-orbs',
             palettes: ['roseGold', 'royalPurple', 'sunsetOrange'],
         },
+        {
+            skeleton: 'ticket-pass',
+            background: 'solid-gradient',
+            frame: 'none',
+            decoration: 'none',
+            palettes: ['roseGold', 'royalPurple', 'sunsetOrange'],
+        },
+        {
+            skeleton: 'glass-card',
+            background: 'solid-gradient',
+            frame: 'none',
+            decoration: 'none',
+            palettes: ['royalPurple', 'roseGold', 'oceanTeal'],
+        },
+        {
+            skeleton: 'neo-brutal',
+            background: 'solid-gradient',
+            frame: 'none',
+            decoration: 'none',
+            palettes: ['sunsetOrange', 'electricIndigo', 'crimsonBold'],
+        },
+        {
+            skeleton: 'magazine-cover',
+            background: 'solid-gradient',
+            frame: 'none',
+            decoration: 'none',
+            palettes: ['crimsonBold', 'charcoalPro', 'violetDrama'],
+        },
     ],
 
     hackathon: [
@@ -186,6 +256,34 @@ const DESIGN_POOLS = {
             decoration: 'glow-orbs',
             palettes: ['oceanTeal', 'neonCyber'],
         },
+        {
+            skeleton: 'big-type',
+            background: 'solid-gradient',
+            frame: 'none',
+            decoration: 'none',
+            palettes: ['neonCyber', 'violetDrama', 'electricIndigo'],
+        },
+        {
+            skeleton: 'diagonal-split',
+            background: 'solid-gradient',
+            frame: 'none',
+            decoration: 'none',
+            palettes: ['neonCyber', 'electricIndigo', 'violetDrama'],
+        },
+        {
+            skeleton: 'neo-brutal',
+            background: 'solid-gradient',
+            frame: 'none',
+            decoration: 'none',
+            palettes: ['electricIndigo', 'neonCyber', 'sunsetOrange'],
+        },
+        {
+            skeleton: 'glass-card',
+            background: 'solid-gradient',
+            frame: 'none',
+            decoration: 'none',
+            palettes: ['violetDrama', 'royalPurple', 'neonCyber'],
+        },
     ],
 
     announcement: [
@@ -228,6 +326,27 @@ const DESIGN_POOLS = {
             frame: 'none',
             decoration: 'gold-corners',
             palettes: ['goldFormal', 'warmAmber'],
+        },
+        {
+            skeleton: 'magazine-cover',
+            background: 'solid-gradient',
+            frame: 'none',
+            decoration: 'none',
+            palettes: ['midnightSlate', 'crimsonBold', 'charcoalPro'],
+        },
+        {
+            skeleton: 'glass-card',
+            background: 'solid-gradient',
+            frame: 'none',
+            decoration: 'none',
+            palettes: ['universityBlue', 'oceanTeal', 'royalPurple'],
+        },
+        {
+            skeleton: 'arch-window',
+            background: 'solid-gradient',
+            frame: 'none',
+            decoration: 'none',
+            palettes: ['creamFormal', 'sageMint', 'slateCrisp'],
         },
     ],
 };
