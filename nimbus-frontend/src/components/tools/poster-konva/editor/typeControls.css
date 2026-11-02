@@ -1,0 +1,53 @@
+/* Typography controls + font picker (used by the Customize panel) */
+.pc-type { display: flex; flex-direction: column; gap: 12px; }
+.pc-type.dense { gap: 10px; }
+.pc-seg { display: flex; flex-wrap: wrap; gap: 6px; }
+.pc-seg .pc-btn { padding: 6px 10px; font-size: 0.78rem; }
+.pc-colors { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.pc-dot { width: 22px; height: 22px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 0 1px #d1d5db; cursor: pointer; padding: 0; }
+.pc-dot.on { box-shadow: 0 0 0 2px #f97316; }
+.pc-colors input[type=color] { width: 28px; height: 26px; padding: 0; border: 1px solid #d1d5db; border-radius: 6px; background: #fff; cursor: pointer; }
+.pc-chip.on { border: 1px solid #f97316; background: #fff7ed; color: #c2410c; }
+.pc-sect { border: 1px solid #e5e7eb; border-radius: 10px; padding: 8px 12px; }
+.pc-sect[open] { padding-bottom: 12px; }
+.pc-sect > summary { cursor: pointer; font-size: 0.85rem; font-weight: 700; color: #374151; }
+.pc-sect > summary small { font-weight: 500; color: #9ca3af; margin-left: 6px; }
+.pc-sect[open] > summary { margin-bottom: 10px; }
+
+.pc-font { position: relative; }
+.pc-font-btn { width: 100%; display: flex; justify-content: space-between; align-items: center; padding: 9px 10px; border: 1px solid #d1d5db; border-radius: 8px; background: #fff; font-size: 0.95rem; cursor: pointer; text-align: left; }
+.pc-font-btn:hover { border-color: #f97316; }
+.pc-font-pop { position: absolute; z-index: 30; left: 0; right: 0; top: calc(100% + 4px); background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; box-shadow: 0 12px 28px rgba(0,0,0,0.16); padding: 8px; display: flex; flex-direction: column; gap: 8px; }
+.pc-font-search { padding: 8px 10px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 0.85rem; }
+.pc-font-cats { display: flex; flex-wrap: wrap; gap: 4px; }
+.pc-font-list { max-height: 230px; overflow-y: auto; display: flex; flex-direction: column; }
+.pc-font-row { border: 0; background: none; text-align: left; padding: 7px 10px; border-radius: 6px; font-size: 1.05rem; cursor: pointer; color: #111827; }
+.pc-font-row:hover { background: #fff7ed; }
+.pc-font-row.on { background: #ffedd5; color: #c2410c; }
+.pc-font-head { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.06em; color: #9ca3af; padding: 6px 10px 2px; }
+.pc-tabs { border-radius: 14px 14px 0 0; }
+
+/* layouts tab */
+.pc-layout-tab { display: flex; flex-direction: column; }
+.pc-matchbar { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin: 12px 12px 0; padding: 10px 12px; border: 1px solid #fed7aa; background: #fff7ed; border-radius: 10px; font-size: 0.8rem; color: #7c2d12; }
+.pc-matchbar .pc-btn { padding: 6px 10px; font-size: 0.78rem; }
+.pc-subhead { margin: 14px 12px 0; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.07em; color: #9ca3af; font-weight: 700; }
+.pc-layout-tab .pc-grid { max-height: none; }
+.pc-layouts-named { grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); }
+.pc-thumb-named { display: flex; flex-direction: column; gap: 6px; align-items: stretch; padding: 0; border: 0; background: none; cursor: pointer; text-align: center; }
+.pc-thumb-named .pc-thumb { display: block; }
+.pc-thumb-named:hover .pc-thumb { border-color: #fdba74; }
+.pc-thumb-named.active .pc-thumb { border-color: #f97316; box-shadow: 0 0 0 2px #fed7aa; }
+.pc-thumb-name { font-size: 0.72rem; font-weight: 600; color: #374151; }
+
+/* unified, named layout thumbnails: tile = poster width, no black bars */
+.pc-layouts-named { grid-template-columns: repeat(auto-fill, 116px); justify-content: space-between; row-gap: 14px; }
+.pc-thumb-named { width: 116px; }
+.pc-thumb-named .pc-thumb { width: auto; display: block; }
+.pc-plus .pc-plus-box { display: flex; align-items: center; justify-content: center; width: 112px; height: 140px; background: #fff7ed; border: 2px dashed #fdba74; border-radius: 8px; color: #ea580c; font-size: 38px; font-weight: 300; line-height: 1; }
+.pc-plus:hover .pc-plus-box, .pc-plus.active .pc-plus-box { border-color: #f97316; background: #ffedd5; }
+
+/* wording editor */
+.pc-pair { display: grid; grid-template-columns: 0.8fr 1.4fr; gap: 6px; }
+.pc-pair.stacked { grid-template-columns: 1fr; }
+.pc-pair input, .pc-row input[type=text] { padding: 8px 9px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 0.85rem; font-family: inherit; min-width: 0; }
