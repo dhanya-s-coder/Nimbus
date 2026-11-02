@@ -6,6 +6,7 @@ import { fitFontSize, measureWidth, truncate, titleScale } from '../engine/text'
 import { Txt, textHeight, Card } from '../layers/ui';
 import { GradBar } from '../layers/primitives';
 import { Editable } from '../engine/edit';
+import { caseText, buildFontStyle } from '../engine/typography';
 
 /**
  * Layout building blocks. Each *Block returns { h, mb, key, render(y) } for stack().
@@ -23,14 +24,25 @@ export const titleBlock = ({
     lineHeight = 1, letterSpacing = -0.5, fill, palette, upper = true, shadow = true, mb = 10, key = 'title',
 }) => {
     if (!text) return null;
-    const t = upper ? text.toUpperCase() : text;
-    const o = { fontFamily: font, fontStyle: weight, lineHeight, letterSpacing };
+    // opt-in global title style (Text tab). The title is measured here to auto-fit, so these must be applied here
+    // (not only in Txt) for the fit to match; every branch is a no-op when palette.type.title is unset.
+    const T = palette?.type?.title;
+    if (T) {
+        if (T.tracking !== undefined) letterSpacing = T.tracking;
+        if (T.lineHeight !== undefined) lineHeight = T.lineHeight;
+        if (T.align) align = T.align;
+        if (T.shadow !== undefined) shadow = T.shadow;
+        if (T.color) fill = T.color;
+    }
+    const t = T?.case ? caseText(text, T.case) : (upper ? text.toUpperCase() : text);
+    const fontStyle = T && (T.weight !== undefined || T.italic !== undefined) ? buildFontStyle(weight, T) : weight;
+    const o = { fontFamily: font, fontStyle, lineHeight, letterSpacing };
     const size = fitFontSize(t, { width: w, maxSize: maxSize * titleScale(font) * (palette.textScale || 1), minSize, maxLines, ...o });
     const h = textHeight(t, { width: w, fontSize: size, ...o });
     return {
         h, mb, key, size,
         render: (y) => (
-            <Txt text={t} x={x} y={y} width={w} align={align} fontSize={size} fontFamily={font} fontStyle={weight}
+            <Txt text={t} x={x} y={y} width={w} align={align} fontSize={size} fontFamily={font} fontStyle={fontStyle}
                 lineHeight={lineHeight} letterSpacing={letterSpacing} fill={fill || palette.text}
                 {...(shadow ? { shadowColor: palette.primary, shadowBlur: 20, shadowOpacity: 0.3, shadowOffsetY: 2 } : {})} />
         ),

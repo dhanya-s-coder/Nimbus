@@ -51,16 +51,24 @@ import '@fontsource/cormorant-garamond/400-italic.css';
 import '@fontsource/eb-garamond/600.css';
 import '@fontsource/eb-garamond/700.css';
 
+import { ensureFontCss, FONT_LIBRARY } from './fontLibrary';
+
 const WEIGHTS = ['400', '600', '700', '800', '900'];
+
+const readyFamilies = new Set();
+/** True when every family was already fully loaded (lets the stage skip its loading gate on a re-render). */
+export const areFontsReady = (families = []) => families.filter(Boolean).every((f) => readyFamilies.has(f));
 
 /** Resolve once every requested family (all used weights) is ready for canvas drawing. */
 export const loadPosterFonts = async (families = []) => {
     if (!document.fonts?.load) return;
     const unique = [...new Set(families.filter(Boolean))];
+    await Promise.all(unique.map(ensureFontCss)); // lazy library fonts fetch their CSS first
     await Promise.all(
         unique.flatMap((f) => WEIGHTS.map((w) => document.fonts.load(`${w} 32px "${f}"`).catch(() => null)))
     );
     if (document.fonts.ready) await document.fonts.ready;
+    unique.forEach((f) => readyFamilies.add(f));
 };
 
 export const familiesForPalette = (palette) => [
@@ -70,8 +78,5 @@ export const familiesForPalette = (palette) => [
     palette.bodyFont,
 ];
 
-/** Title fonts offered in the Customize panel (all self-hosted above). */
-export const TITLE_FONT_CHOICES = [
-    'Montserrat', 'Outfit', 'Space Grotesk', 'Bebas Neue', 'Oswald', 'Orbitron',
-    'Playfair Display', 'DM Serif Display', 'Cormorant Garamond', 'Libre Baskerville',
-];
+/** Fonts offered in the Customize panel (kept for existing imports; now the whole library). */
+export const TITLE_FONT_CHOICES = FONT_LIBRARY.map((f) => f.family);

@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useLayoutEffect, useRef, useState } from 'react';
 import { Group, Rect } from 'react-konva';
+import { DECOR_LABELS } from './decorLabels';
 
 /**
  * Direct-manipulation layer. Every movable poster element is wrapped in <Editable id="...">.
@@ -20,19 +21,24 @@ export const EditContext = createContext({
 
 export const useEdit = () => useContext(EditContext);
 
+/** Id of the nearest <Editable>, so a text node can pick up that element's style override. */
+const ElementIdContext = createContext(null);
+export const useElementId = () => useContext(ElementIdContext);
+
 // element ids -> labels shown in the editor
 export const ELEMENT_LABELS = {
     logos: 'Logos', org: 'Organizer', title: 'Title', sub: 'Subtitle', desc: 'Description', speaker: 'Speaker',
     spk: 'Speaker name', des: 'Designation', extra: 'Details', cards: 'Detail cards', grid: 'Info grid', info: 'Date / venue',
     footer: 'Footer', qr1: 'QR code', qr2: 'QR code 2', avatar: 'Speaker photo', tag: 'Tag', rule: 'Divider',
-    div: 'Divider', bar: 'Accent bar', orn: 'Ornament', kicker: 'Kicker',
+    div: 'Divider', bar: 'Accent bar', orn: 'Ornament', kicker: 'Kicker', rings: 'Decorative circles', infostack: 'Date / venue',
 };
-export const labelFor = (id) => ELEMENT_LABELS[id] || (id.startsWith('x_') ? 'Text' : id);
+export const labelFor = (id) => ELEMENT_LABELS[id] || DECOR_LABELS[id] || (id.startsWith('x_') ? 'Text' : id);
 
 const SNAP = 5;
 const MARGIN = 28;
 
-export const Editable = ({ id, children }) => {
+/** pick={false}: large pieces (frames, glows) get no click target on the poster so they can never block what is under them. */
+export const Editable = ({ id, children, pick = true }) => {
     const ctx = useEdit();
     const ov = ctx.overrides?.[id] || {};
     const ref = useRef(null);
@@ -53,8 +59,8 @@ export const Editable = ({ id, children }) => {
         setBox((b) => (b && Math.abs(b.x - r.x) < 0.5 && Math.abs(b.y - r.y) < 0.5 && Math.abs(b.width - r.width) < 0.5 && Math.abs(b.height - r.height) < 0.5 ? b : r));
     });
 
-    if (ov.hidden && !ctx.editing) return null;
-    const ghost = ov.hidden && ctx.editing;
+    // hidden means gone, in the editor too; it comes back from the "Hidden" chips (or the layer's eye) in the panel
+    if (ov.hidden) return null;
 
     const snapDrag = (e) => {
         const node = e.target;
@@ -89,20 +95,20 @@ export const Editable = ({ id, children }) => {
             y={ov.y || 0}
             scaleX={ov.sx || 1}
             scaleY={ov.sy || 1}
-            opacity={ghost ? 0.25 : 1}
-            draggable={ctx.editing}
+            rotation={ov.r || 0}
+            draggable={ctx.editing && !ov.locked}
             listening={ctx.editing}
             onClick={(e) => { if (ctx.editing) { e.cancelBubble = true; ctx.select(id); } }}
             onTap={(e) => { if (ctx.editing) { e.cancelBubble = true; ctx.select(id); } }}
             onDragStart={() => ctx.select(id)}
             onDragMove={snapDrag}
             onDragEnd={(e) => { ctx.setGuides({}); ctx.commit(id, { x: e.target.x(), y: e.target.y() }); }}
-            onTransformEnd={(e) => { const n = e.target; ctx.commit(id, { x: n.x(), y: n.y(), sx: n.scaleX(), sy: n.scaleY() }); }}
+            onTransformEnd={(e) => { const n = e.target; const own = id.startsWith('e_'); const sx = n.scaleX(); const sy = n.scaleY(); if (own) { n.scaleX(1); n.scaleY(1); } ctx.commit(id, { x: n.x(), y: n.y(), sx, sy, ...(n.rotation() || ov.r ? { r: Math.round(n.rotation() * 10) / 10 } : {}) }); }}
             onMouseEnter={(e) => { if (ctx.editing) { setHover(true); const c = e.target.getStage()?.container(); if (c) c.style.cursor = 'move'; } }}
             onMouseLeave={(e) => { setHover(false); const c = e.target.getStage()?.container(); if (c) c.style.cursor = ''; }}
         >
-            {children}
-            {ctx.editing && box && (
+            <ElementIdContext.Provider value={id}>{children}</ElementIdContext.Provider>
+            {ctx.editing && box && pick && (
                 <Rect
                     ref={hitRef}
                     name="editor-ui"

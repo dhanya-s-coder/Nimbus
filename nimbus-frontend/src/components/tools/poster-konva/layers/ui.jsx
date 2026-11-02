@@ -3,12 +3,21 @@ import { Group, Rect, Text, Image as KImage, Circle, Line } from 'react-konva';
 import useImage from 'use-image';
 import { measureText } from '../engine/text';
 import { linear } from '../engine/color';
-import { Editable } from '../engine/edit';
+import { Editable, useEdit, useElementId } from '../engine/edit';
+import { applyStyleToProps, caseText, roleStyleFor } from '../engine/typography';
 
 /** Text node with canvas-friendly defaults (never listens, wraps by word). */
-export const Txt = ({ text, ...props }) => (
-    <Text text={String(text ?? '')} listening={false} wrap="word" lineHeight={1.2} {...props} />
-);
+export const Txt = ({ text, ...props }) => {
+    // per-element style set in the editor (font, colour, weight...); a no-op when none is set
+    const ctx = useEdit();
+    const id = useElementId();
+    const role = id ? roleStyleFor(id, ctx.typography) : null; // global Title/Body/Accent style
+    const own = id ? ctx.overrides?.[id]?.style : null;       // this element's own style wins
+    const style = role || own ? { ...role, ...own } : null;
+    const p = style ? applyStyleToProps(props, style) : props;
+    const t = style?.case ? caseText(text, style.case) : String(text ?? '');
+    return <Text text={t} listening={false} wrap="word" lineHeight={1.2} {...p} />;
+};
 
 /** Height a Txt with the same props would take (for manual vertical stacking). */
 export const textHeight = (text, p) =>
