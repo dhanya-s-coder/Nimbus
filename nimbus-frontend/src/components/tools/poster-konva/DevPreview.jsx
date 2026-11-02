@@ -4,6 +4,7 @@ import PosterStage from './PosterStage';
 import { getDesignByIndex } from './data/autoDesigner';
 import { normalizeFormData } from './data/normalizeFormData';
 import { exportPosterBlob } from './engine/exportPoster';
+import { applyContent } from './editor/content';
 
 // Dev-only QA page (not mounted in production): /dev/poster?t=event&i=0&p=royalPurple&bg=0
 const SAMPLES = {
@@ -32,6 +33,13 @@ const DevPreview = () => {
             ...(q.get('font') ? { titleFont: q.get('font') } : {}),
             ...(q.get('scale') ? { textScale: Number(q.get('scale')) } : {}),
             ...(q.get('strength') ? { photoStrength: Number(q.get('strength')) } : {}),
+            // ?typo={"title":{"font":"Anton","case":"upper"}}  /  ?ov={"sub":{"style":{"color":"#f59e0b"}}}
+            ...(q.get('typo') ? { typography: JSON.parse(q.get('typo')) } : {}),
+            ...(q.get('ov') ? { overrides: JSON.parse(q.get('ov')) } : {}),
+            // ?el=[{...elements}]  /  ?bg={"c1":"#111","c2":"#333"}  (free-form canvas)
+            ...(q.get('content') ? { content: JSON.parse(q.get('content')) } : {}),
+            ...(q.get('el') ? { elements: JSON.parse(q.get('el')) } : {}),
+            ...(q.get('cbg') ? { bg: JSON.parse(q.get('cbg')) } : {}),
         },
     };
     const full = SAMPLES[t];
@@ -46,7 +54,7 @@ const DevPreview = () => {
     }, []);
     return (
         <div style={{ background: '#222', padding: 0, width: 600 }}>
-            <PosterStage ref={ref} recipe={recipe} data={normalizeFormData(t, form)} aiBackgroundImage={q.get('bg') === '0' ? null : BG} width={600} />
+            <PosterStage ref={ref} recipe={recipe} data={applyContent(normalizeFormData(t, form), recipe.custom.content)} aiBackgroundImage={q.get('bg') === '0' ? null : BG} width={600} />
         </div>
     );
 };

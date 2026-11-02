@@ -23,6 +23,10 @@ const DevPreview = process.env.NODE_ENV !== 'production'
   ? React.lazy(() => import('./components/tools/poster-konva/DevPreview'))
   : null;
 
+const DevEditor = process.env.NODE_ENV !== 'production'
+  ? React.lazy(() => import('./components/tools/poster-konva/DevEditor'))
+  : null;
+
 function App() {
   return (
     <div className="App">
@@ -34,6 +38,7 @@ function App() {
         <Route path="/forgot-password" element={<PublicRoute element={<ForgotPassword />} />} />
         <Route path="/verify-otp" element={<PublicRoute element={<VerifyOTP />} />} />
 
+        {DevEditor && <Route path="/dev/editor" element={<React.Suspense fallback={null}><DevEditor /></React.Suspense>} />}
         {DevPreview && <Route path="/dev/poster" element={<React.Suspense fallback={null}><DevPreview /></React.Suspense>} />}
 
         {/* Protected Routes*/}
