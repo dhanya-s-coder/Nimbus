@@ -80,11 +80,13 @@ const FramedClassic = ({ data, palette }) => {
     return (
         <Group listening={false}>
             {/* ornamental frame */}
+            <Editable id="d_fc_frame" pick={false}><Group listening={false}>
             <Rect x={FRAME} y={FRAME} width={W - FRAME * 2} height={H - FRAME * 2} stroke={`${palette.accent}`} strokeWidth={1.5} opacity={0.85} />
             <Rect x={FRAME + 6} y={FRAME + 6} width={W - FRAME * 2 - 12} height={H - FRAME * 2 - 12} stroke={palette.secondary} strokeWidth={0.7} opacity={0.6} />
             {[[FRAME, FRAME], [W - FRAME, FRAME], [FRAME, H - FRAME], [W - FRAME, H - FRAME]].map(([x, y], i) => (
                 <Rect key={i} x={x} y={y} width={9} height={9} offsetX={4.5} offsetY={4.5} rotation={45} fill={palette.accent} />
             ))}
+            </Group></Editable>
 
             <Group x={0} y={FRAME + 14}>
                 <LogoBar x={PAD} y={0} h={30} collegeLogo={collegeLogo} eventLogo={eventBrandLogo} align="center" width={CW} tint={palette.darkContent ? "#ffffff" : palette.text} />

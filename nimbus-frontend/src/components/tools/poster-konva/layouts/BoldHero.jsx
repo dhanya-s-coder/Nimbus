@@ -99,15 +99,15 @@ const BoldHero = ({ data, palette }) => {
 
     return (
         <Group listening={false}>
-            <HudGrid palette={palette} />
-            <Line points={[W - 16 - 58, 14, W - 16, 14, W - 16, 14 + 58]} stroke={palette.primary} strokeWidth={2} opacity={0.8} />
-            <Line points={[16, H - 14 - 58, 16, H - 14, 16 + 58, H - 14]} stroke={palette.secondary} strokeWidth={2} opacity={0.8} />
+            <Editable id="d_hud" pick={false}><HudGrid palette={palette} /></Editable>
+            <Editable id="d_hc1"><Line points={[W - 16 - 58, 14, W - 16, 14, W - 16, 14 + 58]} stroke={palette.primary} strokeWidth={2} opacity={0.85} shadowColor={palette.primary} shadowBlur={8} shadowOpacity={0.5} listening={false} /></Editable>
+            <Editable id="d_hc2"><Line points={[16, H - 14 - 58, 16, H - 14, 16 + 58, H - 14]} stroke={palette.secondary} strokeWidth={2} opacity={0.85} shadowColor={palette.secondary} shadowBlur={8} shadowOpacity={0.5} listening={false} /></Editable>
             <LogoBar x={PAD} y={PAD - 4} h={34} collegeLogo={collegeLogo} eventLogo={eventBrandLogo} tint={palette.darkContent ? "#ffffff" : palette.text} />
             {hackathon && (
-                <Group x={W - PAD - 190} y={34}>
+                <Editable id="badge"><Group x={W - PAD - 190} y={34}>
                     <Rect width={190} height={26} fill={`${palette.bg}cc`} stroke={palette.primary} strokeWidth={1} shadowColor={palette.primary} shadowBlur={14} shadowOpacity={0.5} />
                     <Txt text={`REGISTER NOW${duration ? ` // ${duration}` : ''}`.toUpperCase()} x={0} y={8} width={190} align="center" fontSize={9} fontFamily="monospace" fontStyle="700" letterSpacing={1.2} fill={palette.primary} wrap="none" />
-                </Group>
+                </Group></Editable>
             )}
             {hero.nodes}
             {infoBar && <Editable id="info">{infoBar.render(barTop)}</Editable>}

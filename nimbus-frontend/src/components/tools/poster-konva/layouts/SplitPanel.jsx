@@ -4,6 +4,7 @@ import { DESIGN_W as W, DESIGN_H as H, rem } from '../engine/constants';
 import { clear, linear } from '../engine/color';
 import { Txt, LogoBar, QrBlock, SpeakerAvatar, CoverImage, useImg } from '../layers/ui';
 import { GradBar, RadialEllipse } from '../layers/primitives';
+import { Editable } from '../engine/edit';
 import { stackCentered } from './stack';
 import { fonts, titleBlock, textBlock, kickerBlock, gradientDivider, infoStackBlock, extraRowsBlock, footerNode } from './parts';
 
@@ -76,14 +77,21 @@ const SplitPanel = ({ data, palette }) => {
             ) : (
                 <Group>
                     {/* decorative panel when there is no photo */}
-                    <RadialEllipse cx={RX + RW * 0.55} cy={H * 0.42} rx={RW * 0.95} ry={RW * 0.95}
-                        stops={[[0, `${palette.primary}40`], [0.65, clear(palette.primary)], [1, clear(palette.primary)]]} />
-                    {[210, 160, 110, 60].map((r, i) => (
-                        <Circle key={r} x={RX + RW * 0.55} y={H * 0.42} radius={r} stroke={i % 2 ? palette.accent : palette.secondary} strokeWidth={i === 1 ? 1.4 : 0.8} opacity={0.18 + i * 0.07} />
-                    ))}
-                    <Circle x={RX + RW * 0.55} y={H * 0.42} radius={26} fill={palette.primary} opacity={0.85} />
-                    <Circle x={RX + RW * 0.55} y={H * 0.42} radius={40} stroke={palette.accent} strokeWidth={2} opacity={0.7} />
-                    <Line points={[RX + 30, H - 110, W - 30, H - 110]} stroke={palette.secondary} strokeWidth={1} opacity={0.35} />
+                    {/* movable / removable like every other element (select it in the Edit tab; Delete hides it) */}
+                    <Editable id="rings">
+                        <Group listening={false}>
+                            <RadialEllipse cx={RX + RW * 0.55} cy={H * 0.42} rx={RW * 0.95} ry={RW * 0.95}
+                                stops={[[0, `${palette.primary}40`], [0.65, clear(palette.primary)], [1, clear(palette.primary)]]} />
+                            {[210, 160, 110, 60].map((r, i) => (
+                                <Circle key={r} x={RX + RW * 0.55} y={H * 0.42} radius={r} stroke={i % 2 ? palette.accent : palette.secondary} strokeWidth={i === 1 ? 1.4 : 0.8} opacity={0.18 + i * 0.07} />
+                            ))}
+                            <Circle x={RX + RW * 0.55} y={H * 0.42} radius={26} fill={palette.primary} opacity={0.85} />
+                            <Circle x={RX + RW * 0.55} y={H * 0.42} radius={40} stroke={palette.accent} strokeWidth={2} opacity={0.7} />
+                        </Group>
+                    </Editable>
+                    <Editable id="rule">
+                        <Line points={[RX + 30, H - 110, W - 30, H - 110]} stroke={palette.secondary} strokeWidth={1} opacity={0.35} hitStrokeWidth={14} listening={false} />
+                    </Editable>
                     {speakerName && (
                         <Group x={RX + 24} y={H - 150}>
                             <Rect width={RW - 48} height={speakerDesignation ? 78 : 56} cornerRadius={8} fill="rgba(4,10,24,0.74)" />
