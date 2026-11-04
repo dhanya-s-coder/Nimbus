@@ -43,10 +43,16 @@ const CircleBadge = ({ data, palette }) => {
     const infoH = infoItems.length ? rem(0.46) * 1.2 + 4 + vH : 0;
     const infoTop = foot.top - 24 - infoH;
 
-    // circle
-    const R = Math.max(120, Math.min(232, (H - 300) / 2));
+    const descB = description && textBlock({ text: description, x: PAD + 14, w: CW - 28, font: bf, size: rem(0.7), lineHeight: 1.5, align: 'center', fill: SOFT, mb: 0, key: 'desc', maxLines: 3 });
+    const extra = extraLines({ items: extraItems, x: PAD, w: CW, bodyFont: bf, ink: SOFT, size: rem(0.58), max: 2, align: 'center' });
+
+    // circle: sized to the room available, then the emblem + caption group is centred vertically
+    const belowH = (descB ? descB.h + 8 : 0) + (extra ? extra.h + 8 : 0);
+    const areaTop = 84;
+    const areaBottom = infoTop - 16;
+    const R = Math.max(120, Math.min(232, (H - 300) / 2, (areaBottom - areaTop - belowH - 24) / 2));
     const cx = W / 2;
-    const cy = 78 + R;
+    const cy = areaTop + Math.max(0, (areaBottom - areaTop - (2 * R + 18 + belowH)) / 2) + R;
     const rIn = R - 54;
 
     // ring text
@@ -68,8 +74,6 @@ const CircleBadge = ({ data, palette }) => {
 
     // below the circle
     const belowTop = cy + R + 18;
-    const descB = description && textBlock({ text: description, x: PAD + 14, w: CW - 28, font: bf, size: rem(0.7), lineHeight: 1.5, align: 'center', fill: SOFT, mb: 0, key: 'desc', maxLines: 3 });
-    const extra = extraLines({ items: extraItems, x: PAD, w: CW, bodyFont: bf, ink: SOFT, size: rem(0.58), max: 2, align: 'center' });
 
     return (
         <Group listening={false}>

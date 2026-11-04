@@ -58,7 +58,12 @@ const DiagonalSplit = ({ data, palette }) => {
     const size = sizes.find((s) => { const t = tryTitle(s); return t && t.h + orgLine + subH <= availH; }) ?? 26;
     const t = tryTitle(size);
     // spread the leftover room: keep the headline a little off the cut, not glued to it
-    const originY = baseY + Math.max(0, (availH - ((t ? t.h : 0) + orgLine + subH)) * 0.45);
+    const titleH = (t ? t.h : 0) + orgLine + subH;
+    const slack = Math.max(0, availH - titleH);
+    const originY = baseY + slack * 0.4;
+    // pull the details up toward the headline on tall posters (35% of the way back to the bottom-anchored spot)
+    const closeTop = originY + titleH + 46;
+    const lowerY = lowerTop > closeTop ? closeTop + (lowerTop - closeTop) * 0.35 : lowerTop;
 
     return (
         <Group listening={false}>
@@ -103,8 +108,8 @@ const DiagonalSplit = ({ data, palette }) => {
                 )}
             </Group>
 
-            {desc && <Editable id="desc"><Group listening={false}>{desc.render(lowerTop)}</Group></Editable>}
-            {extra && <Editable id="extra"><Group listening={false}>{extra.render(lowerTop + (desc ? desc.h + 8 : 0))}</Group></Editable>}
+            {desc && <Editable id="desc"><Group listening={false}>{desc.render(lowerY)}</Group></Editable>}
+            {extra && <Editable id="extra"><Group listening={false}>{extra.render(lowerY + (desc ? desc.h + 8 : 0))}</Group></Editable>}
 
             {infoItems.length > 0 && (
                 <Editable id="info">

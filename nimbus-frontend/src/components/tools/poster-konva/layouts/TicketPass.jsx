@@ -69,7 +69,7 @@ const TicketPass = ({ data, palette }) => {
     const winX = tx + 14;
     const winY = ty + 14;
     const winW = tw - 28;
-    const winH = Math.max(190, Math.min(Math.round(th * 0.47), py - winY - 190));
+    const winH = Math.max(190, Math.min(Math.round(th * (H >= 900 ? 0.56 : 0.47)), py - winY - 190));
     const winBottom = winY + winH;
 
     // ── details between the window and the perforation ─────────────────────────

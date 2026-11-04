@@ -56,7 +56,7 @@ const NeoBrutal = ({ data, palette }) => {
 
     // title slab
     const slabW = CW - SH - 4;
-    const t = titleBlock({ text: title, x: 18, w: slabW - 36, font: tf, weight: tw, maxSize: 70, minSize: 26, maxLines: 3, align: 'left', lineHeight: 0.98, letterSpacing: -1, fill: INK, palette: { ...palette, type: palette.type }, shadow: false, mb: 0 });
+    const t = titleBlock({ text: title, x: 18, w: slabW - 36, font: tf, weight: tw, maxSize: Math.round(70 + Math.max(0, H - 750) * 0.05), minSize: 26, maxLines: 3, align: 'left', lineHeight: 0.98, letterSpacing: -1, fill: INK, palette: { ...palette, type: palette.type }, shadow: false, mb: 0 });
     const slabH = (t ? t.h : 0) + 34;
     const sticker = subtitle && oneLine(subtitle.toUpperCase(), { w: CW - 80, maxSize: rem(0.8), fontFamily: bf, fontStyle: '700', letterSpacing: 1 });
     const dateStr = infoItems[0]?.value;

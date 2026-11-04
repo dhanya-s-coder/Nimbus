@@ -29,7 +29,8 @@ const ArchWindow = ({ data, palette }) => {
 
     const topRow = 26;
     const archTop = 74;
-    const archH = Math.max(210, Math.min(560, Math.min(H * 0.46, H - archTop - 300)));
+    const tall = H >= 900;
+    const archH = Math.max(210, Math.min(tall ? 700 : 560, Math.min(H * (tall ? 0.52 : 0.46), H - archTop - 300)));
     const archW = Math.min(CW - 40, archH * 0.86);
     const archX = (W - archW) / 2;
     const archBottom = archTop + archH;
