@@ -74,9 +74,6 @@ const WordingEditor = ({ id, data, content, onContent, onReset }) => {
     return null;
 };
 
-const sameDesign = (a, b) =>
-    a.skeleton === b.skeleton && a.background === b.background && a.frame === b.frame && a.decoration === b.decoration;
-
 /**
  * Canva-style tweaking for a generated poster. Everything is stored in `recipe` (+ `custom`),
  * which is saved with the poster, so edits survive Save Draft / reload.
@@ -92,9 +89,13 @@ const PosterCustomizer = ({
     // the Design tab only exists on a blank "design your own" canvas; Edit does everything for the other layouts
     const tabs = TABS.filter((t) => t.id !== 'design' || isBlank);
     const designs = getDesignRecipes(template);
+    // one tile per layout: a layout that appears several times in the curated list (different backgrounds/frames) is shown
+    // once, with its first (primary) variant; Generate and Shuffle still rotate through all the variants
+    const seenLayouts = new Set();
+    const uniqueDesigns = designs.filter((d) => !seenLayouts.has(d.skeleton) && seenLayouts.add(d.skeleton));
     const allLayouts = [
-        ...designs.map((d) => ({ key: `d${d.index}`, name: LAYOUT_NAMES[d.skeleton] || d.skeleton, skin: { skeleton: d.skeleton, background: d.background, frame: d.frame, decoration: d.decoration }, paletteId: d.paletteId, active: sameDesign(d, recipe) })),
-        ...MORE_LAYOUTS.filter((m) => !designs.some((d) => d.skeleton === m.skeleton)).map((m) => ({ key: m.skeleton, name: m.name, skin: { skeleton: m.skeleton, background: m.background, frame: m.frame, decoration: m.decoration }, paletteId: m.palettes[0], active: recipe.skeleton === m.skeleton })),
+        ...uniqueDesigns.map((d) => ({ key: `d${d.index}`, name: LAYOUT_NAMES[d.skeleton] || d.skeleton, skin: { skeleton: d.skeleton, background: d.background, frame: d.frame, decoration: d.decoration }, paletteId: d.paletteId, active: recipe.skeleton === d.skeleton })),
+        ...MORE_LAYOUTS.filter((m) => !seenLayouts.has(m.skeleton)).map((m) => ({ key: m.skeleton, name: m.name, skin: { skeleton: m.skeleton, background: m.background, frame: m.frame, decoration: m.decoration }, paletteId: m.palettes[0], active: recipe.skeleton === m.skeleton })),
     ];
     const overrides = custom.overrides || {};
     const extras = custom.extras || [];

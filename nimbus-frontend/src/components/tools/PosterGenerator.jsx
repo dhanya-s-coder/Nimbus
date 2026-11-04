@@ -132,6 +132,7 @@ const PosterGenerator = () => {
     const [styleRefId, setStyleRefId] = useState('');
     useEffect(() => {
         let alive = true;
+        if (!localStorage.getItem('accessToken')) return undefined; // not signed in (e.g. the dev preview): nothing to offer, and no redirect
         (async () => {
             try {
                 const res = await fetchWithAuth(API_ENDPOINTS.RAG.SOURCES);

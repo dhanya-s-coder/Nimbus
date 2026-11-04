@@ -12,7 +12,7 @@ const seed = () => {
             selectedTemplate: 'event',
             formData: { eventName: 'TechFest 2025', tagline: 'Innovate. Create. Celebrate.', subdescription: 'Three days of competitions, workshops and live performances.', date: 'March 15-17, 2025', time: '9:00 AM onwards', venue: 'Main Auditorium', organizer: 'Society Council' },
             generatedImage: BG,
-            posterStyle: { skeleton: 'magazine-cover', background: 'solid-gradient', frame: 'none', decoration: 'none', paletteId: 'auto', custom: {} },
+            posterStyle: { skeleton: new URLSearchParams(window.location.search).get('s') || 'magazine-cover', background: 'solid-gradient', frame: 'none', decoration: 'none', paletteId: new URLSearchParams(window.location.search).get('p') || 'auto', custom: {} },
         }));
     } catch { /* ignore */ }
     return true;
