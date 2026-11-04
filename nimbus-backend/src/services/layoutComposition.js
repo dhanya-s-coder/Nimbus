@@ -19,6 +19,9 @@ export const LAYOUT_COMPOSITION = {
     'big-type': 'a dark, smooth, atmospheric background with a single soft light source and subtle texture, very little detail and lots of negative space so huge white lettering stays readable',
     'diagonal-split': 'the scene lives in the top 45% of the canvas with horizon-like depth and a diagonal rise toward the right, the lower half is a smooth dark gradient',
     'glass-card': 'vivid depth-rich scene with soft bokeh lights and colourful gradients across the whole canvas, the main subject in the upper 40%, the lower 60% dreamy and softly blurred (a frosted glass card will sit on it)',
+    'swiss-grid': 'a wide, cinematic landscape-style scene that will be cropped into a short banner (about 3:1) across the upper third: strong horizontal composition, rich colour, one clear focal point left of centre, everything else restrained',
+    'photo-hero': 'a full-bleed hero scene in the upper half of the canvas with real depth and a clear focal point in the middle, vivid colour, fading to a soft calm gradient in the lower half (a paper-coloured card covers it)',
+    'retro-sunburst': 'a single iconic, centred subject or scene with strong depth and rich colour, framed so the central circle (about 40% of the canvas width) shows it well, nothing important near the corners (a round window crops it), warm vintage poster palette',
     blank: 'a versatile, balanced piece of artwork with moderate detail and soft focus areas, nothing dominant, so text, shapes and images can be placed anywhere on it',
     'circle-badge': 'radial composition with a soft glow in the upper middle, a darker vignette toward the corners, a gently darker centre where a round emblem sits, a calm lower third',
 };

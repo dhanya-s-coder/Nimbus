@@ -14,6 +14,9 @@ import BigType, { FONTS as BIGTYPE_FONTS } from './BigType';
 import DiagonalSplit, { FONTS as DIAGONALSPLIT_FONTS } from './DiagonalSplit';
 import GlassCard, { FONTS as GLASSCARD_FONTS } from './GlassCard';
 import CircleBadge, { FONTS as CIRCLEBADGE_FONTS } from './CircleBadge';
+import SwissGrid, { FONTS as SWISSGRID_FONTS } from './SwissGrid';
+import PhotoHero, { FONTS as PHOTOHERO_FONTS } from './PhotoHero';
+import RetroSunburst, { FONTS as RETROSUNBURST_FONTS } from './RetroSunburst';
 import { BACKGROUNDS } from '../layers/backgrounds';
 import { DECORATIONS } from '../layers/decorations';
 import { FRAMES } from '../layers/frames';
@@ -35,6 +38,9 @@ export const LAYOUTS = {
     'diagonal-split': DiagonalSplit,
     'glass-card': GlassCard,
     'circle-badge': CircleBadge,
+    'swiss-grid': SwissGrid,
+    'photo-hero': PhotoHero,
+    'retro-sunburst': RetroSunburst,
 };
 
 /** Extra fonts a layout draws with (loaded before it renders, on top of the palette's own). */
@@ -47,6 +53,9 @@ export const LAYOUT_FONTS = {
     'diagonal-split': DIAGONALSPLIT_FONTS,
     'glass-card': GLASSCARD_FONTS,
     'circle-badge': CIRCLEBADGE_FONTS,
+    'swiss-grid': SWISSGRID_FONTS,
+    'photo-hero': PHOTOHERO_FONTS,
+    'retro-sunburst': RETROSUNBURST_FONTS,
 };
 
 /**
@@ -63,6 +72,9 @@ export const MORE_LAYOUTS = [
     { skeleton: 'diagonal-split', name: 'Diagonal Split', background: 'solid-gradient', frame: 'none', decoration: 'none', palettes: ['electricIndigo', 'sunsetOrange', 'oceanTeal'] },
     { skeleton: 'glass-card', name: 'Glass Card', background: 'solid-gradient', frame: 'none', decoration: 'none', palettes: ['royalPurple', 'roseGold', 'oceanTeal'] },
     { skeleton: 'circle-badge', name: 'Circle Badge', background: 'solid-gradient', frame: 'none', decoration: 'none', palettes: ['goldFormal', 'emeraldAcademic', 'royalPurple'] },
+    { skeleton: 'swiss-grid', name: 'Swiss Grid', background: 'solid-gradient', frame: 'none', decoration: 'none', palettes: ['slateCrisp', 'universityBlue', 'crimsonBold'] },
+    { skeleton: 'photo-hero', name: 'Photo Hero', background: 'solid-gradient', frame: 'none', decoration: 'none', palettes: ['universityBlue', 'emeraldAcademic', 'sunsetOrange'] },
+    { skeleton: 'retro-sunburst', name: 'Retro Sunburst', background: 'solid-gradient', frame: 'none', decoration: 'none', palettes: ['warmAmber', 'crimsonBold', 'goldFormal'] },
 ];
 
 /** Display names for every layout (the gallery labels). */

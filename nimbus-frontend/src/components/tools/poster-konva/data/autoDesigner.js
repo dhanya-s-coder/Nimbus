@@ -63,6 +63,20 @@ const DESIGN_POOLS = {
             decoration: 'none',
             palettes: ['goldFormal', 'universityBlue', 'emeraldAcademic'],
         },
+        {
+            skeleton: 'swiss-grid',
+            background: 'solid-gradient',
+            frame: 'none',
+            decoration: 'none',
+            palettes: ['slateCrisp', 'universityBlue', 'sageMint'],
+        },
+        {
+            skeleton: 'photo-hero',
+            background: 'solid-gradient',
+            frame: 'none',
+            decoration: 'none',
+            palettes: ['universityBlue', 'emeraldAcademic', 'oceanTeal'],
+        },
     ],
 
     recruitment: [
@@ -126,6 +140,20 @@ const DESIGN_POOLS = {
             frame: 'none',
             decoration: 'none',
             palettes: ['electricIndigo', 'oceanTeal', 'sunsetOrange'],
+        },
+        {
+            skeleton: 'swiss-grid',
+            background: 'solid-gradient',
+            frame: 'none',
+            decoration: 'none',
+            palettes: ['crimsonBold', 'slateCrisp', 'universityBlue'],
+        },
+        {
+            skeleton: 'photo-hero',
+            background: 'solid-gradient',
+            frame: 'none',
+            decoration: 'none',
+            palettes: ['emeraldAcademic', 'sunsetOrange', 'oceanTeal'],
         },
     ],
 
@@ -213,6 +241,27 @@ const DESIGN_POOLS = {
             decoration: 'none',
             palettes: ['crimsonBold', 'charcoalPro', 'violetDrama'],
         },
+        {
+            skeleton: 'retro-sunburst',
+            background: 'solid-gradient',
+            frame: 'none',
+            decoration: 'none',
+            palettes: ['warmAmber', 'crimsonBold', 'goldFormal'],
+        },
+        {
+            skeleton: 'photo-hero',
+            background: 'solid-gradient',
+            frame: 'none',
+            decoration: 'none',
+            palettes: ['royalPurple', 'oceanTeal', 'sunsetOrange'],
+        },
+        {
+            skeleton: 'swiss-grid',
+            background: 'solid-gradient',
+            frame: 'none',
+            decoration: 'none',
+            palettes: ['electricIndigo', 'slateCrisp', 'crimsonBold'],
+        },
     ],
 
     hackathon: [
@@ -284,6 +333,20 @@ const DESIGN_POOLS = {
             decoration: 'none',
             palettes: ['violetDrama', 'royalPurple', 'neonCyber'],
         },
+        {
+            skeleton: 'retro-sunburst',
+            background: 'solid-gradient',
+            frame: 'none',
+            decoration: 'none',
+            palettes: ['goldFormal', 'warmAmber', 'creamFormal'],
+        },
+        {
+            skeleton: 'swiss-grid',
+            background: 'solid-gradient',
+            frame: 'none',
+            decoration: 'none',
+            palettes: ['slateCrisp', 'universityBlue', 'crimsonBold'],
+        },
     ],
 
     announcement: [
@@ -347,6 +410,20 @@ const DESIGN_POOLS = {
             frame: 'none',
             decoration: 'none',
             palettes: ['creamFormal', 'sageMint', 'slateCrisp'],
+        },
+        {
+            skeleton: 'photo-hero',
+            background: 'solid-gradient',
+            frame: 'none',
+            decoration: 'none',
+            palettes: ['universityBlue', 'emeraldAcademic', 'royalPurple'],
+        },
+        {
+            skeleton: 'retro-sunburst',
+            background: 'solid-gradient',
+            frame: 'none',
+            decoration: 'none',
+            palettes: ['warmAmber', 'goldFormal', 'crimsonBold'],
         },
     ],
 };
