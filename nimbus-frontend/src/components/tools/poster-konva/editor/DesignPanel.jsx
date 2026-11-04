@@ -5,6 +5,7 @@ import { SIZES } from '../engine/constants';
 import {
     FIELD_OPTIONS, elementLabel, isElementId, makeText, makeField, makeShape, makeBlock,
 } from './elements';
+import { MASKS, BORDERS, maskOf } from './shapes';
 import './designPanel.css';
 
 const ICONS = { text: FiType, field: FiType, image: FiImage, block: FiGrid };
@@ -53,6 +54,37 @@ const ReplaceImage = ({ el, design }) => {
     );
 };
 
+/** Pick the shape a picture is cut into. */
+const ShapePicker = ({ value, onChange }) => (
+    <div className="dp-row"><span>Shape</span>
+        <div className="dp-shapes-grid">
+            {MASKS.map(([k, label]) => (
+                <button key={k} type="button" className={`pc-btn ${value === k ? 'on' : ''}`} onClick={() => onChange(k)}>{label}</button>
+            ))}
+        </div>
+    </div>
+);
+
+/** Border style, colour and thickness for pictures. */
+const BorderControls = ({ el, set, swatches }) => {
+    const b = el.border || {};
+    const style = b.style || 'none';
+    const patch = (p) => set({ border: { style: 'solid', color: '#ffffff', width: 4, ...b, ...p } });
+    return (
+        <>
+            <div className="dp-row"><span>Border</span>
+                <div className="dp-shapes-grid">
+                    {BORDERS.map(([k, label]) => (
+                        <button key={k} type="button" className={`pc-btn ${style === k ? 'on' : ''}`} onClick={() => patch({ style: k })}>{label}</button>
+                    ))}
+                </div>
+            </div>
+            {style !== 'none' && style !== 'shadow' && <ColorRow label={style === 'glow' ? 'Glow colour' : style === 'polaroid' ? 'Frame colour' : 'Border colour'} value={b.color || '#ffffff'} swatches={swatches} onChange={(color) => patch({ color })} />}
+            {style !== 'none' && style !== 'shadow' && <Slider label="Thickness" value={b.width ?? 4} min={1} max={24} unit="px" onChange={(width) => patch({ width })} />}
+        </>
+    );
+};
+
 /** Properties of the selected free-form element. */
 const Properties = ({ el, design, swatches, fallbackFont }) => {
     const set = (patch) => design.update(el.id, patch);
@@ -92,14 +124,19 @@ const Properties = ({ el, design, swatches, fallbackFont }) => {
             {el.type === 'image' && (
                 <>
                     <Seg label="Fit" value={el.fit} options={[['cover', 'Fill'], ['contain', 'Fit inside']]} onChange={(fit) => set({ fit })} />
-                    <Seg label="Shape" value={el.mask} options={[['none', 'Rectangle'], ['circle', 'Circle']]} onChange={(mask) => set({ mask })} />
-                    {el.mask !== 'circle' && el.fit !== 'contain' && <Slider label="Corners" value={el.radius || 0} min={0} max={120} unit="px" onChange={(radius) => set({ radius })} />}
+                    <ShapePicker value={maskOf(el.mask)} onChange={(mask) => set({ mask })} />
+                    {maskOf(el.mask) === 'rounded' && <Slider label="Corners" value={el.radius ?? 24} min={0} max={200} unit="px" onChange={(radius) => set({ radius })} />}
+                    <BorderControls el={el} set={set} swatches={swatches} />
                     <Slider label="Opacity" value={el.opacity ?? 1} min={0.05} max={1} step={0.05} onChange={(opacity) => set({ opacity })} />
                 </>
             )}
 
             {el.type === 'block' && el.block === 'avatar' && (
-                <Seg label="Shape" value={el.shape} options={[['Circle', 'Circle'], ['Square', 'Square'], ['Hexagon', 'Hexagon'], ['Diamond', 'Diamond']]} onChange={(shape) => set({ shape })} />
+                <>
+                    <ShapePicker value={maskOf(el.shape || 'circle')} onChange={(shape) => set({ shape })} />
+                    {maskOf(el.shape || 'circle') === 'rounded' && <Slider label="Corners" value={el.radius ?? 24} min={0} max={200} unit="px" onChange={(radius) => set({ radius })} />}
+                    <BorderControls el={el} set={set} swatches={swatches} />
+                </>
             )}
             {el.type === 'block' && (el.block === 'qr1' || el.block === 'qr2' || el.block === 'avatar') && <ReplaceImage el={el} design={design} />}
             {el.type === 'block' && <p className="pc-hint">Drag a corner on the poster to resize.{el.block === 'logos' ? ' Shows the logos from the form.' : ''}</p>}

@@ -35,3 +35,6 @@
 
 .dp-head-actions { float: right; text-transform: none; letter-spacing: 0; }
 .dp-head-actions .pc-link { margin-left: 8px; font-size: 0.74rem; }
+
+.dp-shapes-grid { display: flex; flex-wrap: wrap; gap: 6px; }
+.dp-shapes-grid .pc-btn { padding: 6px 10px; font-size: 0.78rem; }

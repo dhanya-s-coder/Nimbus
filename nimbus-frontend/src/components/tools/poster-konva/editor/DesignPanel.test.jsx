@@ -84,3 +84,15 @@ test('editing a text element sends its changes through update / style', () => {
     fireEvent.click(screen.getByText('AA')); // upper-case
     expect(design.style).toHaveBeenCalledWith(el.id, { case: 'upper' });
 });
+
+test('image: shapes and border styles are offered and applied', () => {
+    const design = makeDesign();
+    const el = makeImage('data:image/png;base64,AAAA', 200, 100);
+    mount(design, [el], el.id);
+    fireEvent.click(screen.getByText('Star'));
+    expect(design.update).toHaveBeenLastCalledWith(el.id, { mask: 'star' });
+    fireEvent.click(screen.getByText('Dashed'));
+    expect(design.update).toHaveBeenLastCalledWith(el.id, { border: expect.objectContaining({ style: 'dashed' }) });
+    fireEvent.click(screen.getByText('Photo frame'));
+    expect(design.update).toHaveBeenLastCalledWith(el.id, { border: expect.objectContaining({ style: 'polaroid' }) });
+});

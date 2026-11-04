@@ -201,3 +201,27 @@ test('every decorative piece has a name and the right pieces are listed per desi
     expect(piecesFor({ skeleton: 'split-panel', decoration: 'none', frame: 'none', background: 'solid-gradient' }, {})).toEqual(['rings', 'rule']);
     expect(piecesFor({ skeleton: 'split-panel', decoration: 'none', frame: 'none', background: 'solid-gradient' }, { speakerPhoto: 'x' })).toEqual([]);
 });
+
+// ---- picture shapes and borders -----------------------------------------------------------------------------------
+import { MASKS, BORDERS, maskPath, maskOf, frameBox } from '../editor/shapes';
+
+test('every picture shape draws a closed outline inside its box', () => {
+    MASKS.forEach(([mask]) => {
+        const pts = []; let closed = false;
+        const ctx = {
+            moveTo: (x, y) => pts.push([x, y]), lineTo: (x, y) => pts.push([x, y]), closePath: () => { closed = true; },
+            bezierCurveTo: (a, b, c, d, x, y) => pts.push([x, y]),
+            arc: (cx, cy, r, a0, a1) => { pts.push([cx + r * Math.cos(a0), cy + r * Math.sin(a0)], [cx + r * Math.cos(a1), cy + r * Math.sin(a1)]); },
+        };
+        maskPath(mask, 200, 120, 30)(ctx);
+        expect(closed).toBe(true);
+        expect(pts.length).toBeGreaterThan(2);
+        pts.forEach(([x, y]) => { expect(x).toBeGreaterThanOrEqual(-1); expect(x).toBeLessThanOrEqual(201); expect(y).toBeGreaterThanOrEqual(-1); expect(y).toBeLessThanOrEqual(121); });
+    });
+    expect(BORDERS.map(([k]) => k)).toEqual(expect.arrayContaining(['none', 'solid', 'dashed', 'dotted', 'double', 'glow', 'shadow', 'polaroid']));
+    expect(maskOf('Hexagon')).toBe('hexagon');   // speaker photos saved before masks existed keep working
+    expect(maskOf('Square')).toBe('none');
+    expect(maskOf(undefined)).toBe('none');
+    const f = frameBox(200, 200, 4);
+    expect(f.w).toBeLessThan(200); expect(f.h).toBeLessThan(f.w);   // thicker bottom, like an instant photo
+});
